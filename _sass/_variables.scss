@@ -5,6 +5,7 @@
 
 
 // Colors
+$ufmg-red:            #C8102E !default;
 $red-color:           #FF3636 !default;
 $red-color-dark:      #B71C1C !default;
 $orange-color:        #F29105 !default;
@@ -34,5 +35,5 @@ $black-color: #000000 !default;
 
 // Theme colors
 
-$code-bg-color-light:     rgba($purple-color, 0.05);
+$code-bg-color-light:     rgba($ufmg-red, 0.05);
 $code-bg-color-dark:      #2c3237 !default;
