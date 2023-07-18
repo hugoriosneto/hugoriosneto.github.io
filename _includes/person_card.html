@@ -7,6 +7,10 @@
       {%- include figure.html
         path=person.img
         alt="person thumbnail" -%}
+    {%- else %}
+      {%- include figure.html
+        path="assets/img/blank_profile.jpg"
+        alt="person thumbnail" -%}
     {%- endif %}
     <div class="card-body">
       <h2 class="card-title">{{ person.first_name }}<br>{{ person.last_name }}</h2>

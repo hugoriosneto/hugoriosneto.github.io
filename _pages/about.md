@@ -2,7 +2,7 @@
 layout: about
 title: Home
 permalink: /
-subtitle: <a href='#'>Affiliations</a>. Address. Contacts. Moto. Etc.
+subtitle: Sports Analytics Laboratory at <a href='https://dcc.ufmg.br/'>DCC, UFMG</a>.
 
 profile:
   align: right
