@@ -1,10 +1,10 @@
 ---
 layout: team
-title: team
+title: Team
 permalink: /team/
 nav: true
 nav_order: 1
-display_categories: [Faculty, PhD-Students, MsC-Students, BA-Students, Alumni]
+display_categories: [Faculty, PhD-Students, MSc-Students, BS-Students, Alumni]
 ---
 
 <!-- pages/team.md -->

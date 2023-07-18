@@ -1,17 +1,13 @@
 ---
 layout: about
-title: about
+title: Home
 permalink: /
 subtitle: <a href='#'>Affiliations</a>. Address. Contacts. Moto. Etc.
 
 profile:
   align: right
-  # image: prof_pic.jpg
+  image: salab-logo.jpg
   image_circular: false # crops the image to make it circular
-  address: >
-    <p>Departamento de Ciência da Computação</p>
-    <p>Rua Reitor Píres Albuquerque, ICEx - Pampulha</p>
-    <p>Belo Horizonte, Minas Gerais, Brazil</p>
 
 news: true  # includes a list of news items
 latest_posts: true  # includes a list of the newest posts
