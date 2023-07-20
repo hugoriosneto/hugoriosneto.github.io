@@ -13,5 +13,5 @@ personal_page:
 scholar_userid:
 github_username: fubininho
 twitter_username: ri_furbino
-linkedin_username:
+linkedin_username: ricardo-furbino
 ---

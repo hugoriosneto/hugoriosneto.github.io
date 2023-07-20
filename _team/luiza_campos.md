@@ -13,5 +13,5 @@ personal_page: https://luizacbcampos.github.io/
 scholar_userid: _SwVdxsAAAAJ
 github_username: luizacbcampos
 twitter_username: luizacbcampos
-linkedin_username: 
+linkedin_username: luiza-chagas-brandão-campos
 ---

@@ -32,14 +32,17 @@
           &nbsp;<a href="https://scholar.google.com/citations?user={{ person.scholar_userid }}" title="Google Scholar"><i class="ai ai-google-scholar"></i></a>&nbsp;
           {% endif %}
           {%- if person.personal_page -%}
-          &nbsp;<a href="{{ person.personal_page }}" title="Work"><i class="far fa-address-card"></i></a>&nbsp;
+          &nbsp;<a href="{{ person.personal_page }}" title="Personal Page"><i class="far fa-address-card"></i></a>&nbsp;
           {% endif %}
           {%- if person.github_username -%}
           &nbsp;<a href="https://github.com/{{ person.github_username }}" title="GitHub"><i class="fab fa-github"></i></a>&nbsp;
           {% endif %}
           {%- if person.twitter_username -%}
           &nbsp;<a href="https://twitter.com/{{ person.twitter_username }}" title="Twitter"><i class="fab fa-twitter"></i></a>&nbsp;
-          {% endif %} 
+          {% endif %}
+          {%- if person.linkedin_username -%}
+          &nbsp;<a href="https://linkedin.com/in/{{ person.linkedin_username }}" title="LinkedIn"><i class="fab fa-linkedin"></i></a>&nbsp;
+          {% endif %}
         </p>
 
 

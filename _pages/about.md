@@ -2,21 +2,20 @@
 layout: about
 title: Home
 permalink: /
-subtitle: Sports Analytics Laboratory at <a href='https://dcc.ufmg.br/'>DCC, UFMG</a>.
-
-profile:
-  align: right
-  image: salab-logo.jpg
-  image_circular: false # crops the image to make it circular
 
 news: true  # includes a list of news items
 latest_posts: true  # includes a list of the newest posts
-selected_papers: true # includes a list of papers marked as "selected={true}"
 social: true  # includes social icons at the bottom of the page
 ---
 
-Write your biography here. Tell the world about yourself. Link to your favorite [subreddit](http://reddit.com). You can put a picture in, too. The code is already in, just name your picture `prof_pic.jpg` and put it in the `img/` folder.
+Welcome to the Sports Analytics Lab at the <a href='https://ufmg.br/'>Federal University of Minas Gerais (UFMG)</a> - the first of its kind in Brazil! As a unique part of the <a href='https://dcc.ufmg.br/'>Computer Science Department</a>, our lab is composed of a dynamic, multidisciplinary team of faculty, PhD, MSc, and BS students, each bringing their own expertise and passion to the world of sports analytics.
 
-Put your address / P.O. box / other info right below your picture. You can also disable any of these elements by editing `profile` property of the YAML header of your `_pages/about.md`. Edit `_bibliography/papers.bib` and Jekyll will render your [publications page](/al-folio/publications/) automatically.
+Our dual mission is to conduct cutting-edge research and promote scientific divulgation, pushing the boundaries of knowledge in sports analytics. We strive to leverage data and advanced computational techniques to create meaningful insights, aiding in decision-making processes in the realm of sports. 
 
-Link to your social media connections, too. This theme is set up to use [Font Awesome icons](http://fortawesome.github.io/Font-Awesome/) and [Academicons](https://jpswalsh.github.io/academicons/), like the ones below. Add your Facebook, Twitter, LinkedIn, Google Scholar, or just disable all of them.
+The lab is privileged to partner with <a href='https://www.pff.com/'>Pro Football Focus (PFF)</a>, a leading data provider in the field of sports analytics. This partnership empowers our research, giving us access to a vast pool of precise and comprehensive sports data. 
+
+We are also proud of our pioneering role in Brazil's sports analytics landscape. In 2022, we organized the first-ever football analytics event in Brazil, "Football Analytics: Modelling and Experience (FAME)". The event was a groundbreaking endeavor, designed to bridge the gap between sports professionals, enthusiasts, and data scientists, promoting a dialogue between theory and practice.
+
+In line with our commitment to education, we launched an innovative undergraduate course, "Data Science Applied to Football", in the first semester of 2023. The course serves as a platform to groom future sports analytics professionals, offering a comprehensive syllabus that merges theoretical knowledge with practical applications.
+
+Thank you for visiting us! We invite you to explore our website, learn more about our initiatives, and join us in our journey to redefine the future of sports through data and analytics.

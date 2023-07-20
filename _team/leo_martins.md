@@ -13,5 +13,5 @@ personal_page: https://homepages.dcc.ufmg.br/~leomartins/
 scholar_userid: 
 github_username: 
 twitter_username: leomartins_sf
-linkedin_username: 
+linkedin_username: leomartins7
 ---

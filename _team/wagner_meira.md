@@ -13,5 +13,5 @@ personal_page: https://dcc.ufmg.br/professor/wagner-meira-junior/
 scholar_userid: oad6_oEAAAAJ
 github_username: 
 twitter_username:
-linkedin_username: 
+linkedin_username: wagner-meira-jr-3b83a0
 ---

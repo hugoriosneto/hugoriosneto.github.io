@@ -13,5 +13,5 @@ personal_page: https://dcc.ufmg.br/professor/adriano-cesar-machado-pereira/
 scholar_userid: MT9oSSwAAAAJ
 github_username: 
 twitter_username:
-linkedin_username: 
+linkedin_username: adrianocesarmachadopereira
 ---
