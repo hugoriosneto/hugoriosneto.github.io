@@ -1,4 +1,4 @@
 User-agent: *
 Disallow:
 
-Sitemap: https://SALabUFMG.github.io/sitemap.xml
+Sitemap: https://hugoriosneto.github.io/sitemap.xml
