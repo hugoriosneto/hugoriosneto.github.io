@@ -5,4 +5,4 @@ inline: true
 related_posts: false
 ---
 
-Welcome to our website!
+Welcome to my website!

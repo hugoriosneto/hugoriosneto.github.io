@@ -2,22 +2,22 @@
 # Site settings
 # -----------------------------------------------------------------------------
 
-title: Sports Analytics Lab (SALab) @ UFMG # the website title (if blank, full name will be used instead)
-first_name:
+title: Hugo Rios-Neto # the website title (if blank, full name will be used instead)
+first_name: Hugo
 middle_name:
-last_name: SALab
-email: salab.dcc.ufmg@gmail.com
+last_name: Rios-Neto
+email: hugoriosneto@dcc.ufmg.br
 description: > # the ">" symbol means to ignore newlines until "footer_text:"
-  The Sports Analytics Lab at the <a href='https://ufmg.br/'>Federal University of Minas Gerais (UFMG)</a> - the first of its kind in Brazil!
+  Hugo Rios-Neto's personal website.
 footer_text: >
 keywords:  # add your own keywords or leave empty
 
 lang: en # the language of your site (for example: en, fr, cn, ru, etc.)
 icon: salab-logo.jpg # the emoji used as the favicon (alternatively, provide image name in /assets/img/) ⚽️
 
-url: https://SALabUFMG.github.io # the base hostname & protocol for your site
+url: https://hugoriosneto.github.io # the base hostname & protocol for your site
 baseurl:  # the subpath of your site, e.g. /blog/
-last_updated: false # set to true if you want to display last updated in the footer
+last_updated: true # set to true if you want to display last updated in the footer
 impressum_path:  # set to path to include impressum link in the footer, use the same path as permalink in a page, helps to conform with EU GDPR
 
 # -----------------------------------------------------------------------------
@@ -25,7 +25,7 @@ impressum_path:  # set to path to include impressum link in the footer, use the 
 # -----------------------------------------------------------------------------
 
 # code highlighter theme
-highlight_theme_light: github   # https://github.com/jwarby/jekyll-pygments-themes
+highlight_theme_light: emacs   # https://github.com/jwarby/jekyll-pygments-themes
 highlight_theme_dark: native    # https://github.com/jwarby/jekyll-pygments-themes
 
 # repo color theme
@@ -68,13 +68,13 @@ og_image: # The site-wide (default for all links) Open Graph preview image
 # Social integration
 # -----------------------------------------------------------------------------
 
-github_username: salabufmg # your GitHub user name
+github_username: hugoriosneto # your GitHub user name
 gitlab_username: # your GitLab user name
-twitter_username: SALab_UFMG # your Twitter handle
+twitter_username: hugoriosneto # your Twitter handle
 mastodon_username: # your mastodon instance+username in the format instance.tld/@username
-linkedin_username: # your LinkedIn user name
+linkedin_username: hugoriosneto # your LinkedIn user name
 telegram_username: # your Telegram user name
-scholar_userid: # your Google Scholar ID
+scholar_userid: jtR1qv4AAAAJ # your Google Scholar ID
 semanticscholar_id: # your Semantic Scholar ID
 whatsapp_number: # your WhatsApp number (full phone number in international format. Omit any zeroes, brackets, or dashes when adding the phone number in international format.)
 orcid_id: # your ORCID ID
@@ -135,7 +135,7 @@ related_blog_posts:
 # Follow instructions on https://giscus.app/ to setup for your repo to fill out
 # the information below.
 giscus:
-  repo: alshedivat/al-folio      # <your-github-user-name>/<your-github-repo-name>
+  repo: hugoriosneto/hugoriosneto.github.io      # <your-github-user-name>/<your-github-repo-name>
   repo_id: MDEwOlJlcG9zaXRvcnk2MDAyNDM2NQ==
   category: Comments             # name of the category under which discussions will be created
   category_id: DIC_kwDOA5PmLc4CTBt6
