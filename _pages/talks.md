@@ -36,7 +36,7 @@ nav_order: 3
 <div class="row mt-3">
     <div class="col-12">
         <h3>Hugo Rios-Neto @ 2021 Barça Innovation Hub Webinar</h3> <!-- This is your video header -->
-        <p>Write description</p> <!-- This is your video description -->
+        <p>Hugo Rios-Neto was invited to present again his work from the previous year's conference to open a series of webinar that seeked to promote the 2021 FC Barcelona Sports Tomorrow Congress.</p> <!-- This is your video description -->
     </div>
     <div class="col-12 embed-responsive embed-responsive-16by9">
         {% include video.html path="https://www.youtube.com/embed/JC38450JDlc" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
@@ -48,7 +48,7 @@ nav_order: 3
 <div class="row mt-3">
     <div class="col-12">
         <h3>Hugo Rios-Neto @ 2020 FC Barcelona Analytics in Sports Tomorrow Congress</h3> <!-- This is your video header -->
-        <p>Write description</p> <!-- This is your video description -->
+        <p>Hugo Rios-Neto presented the work he developed with <a href='https://dcc.ufmg.br/professor/wagner-meira-junior/'>Wagner Meira Jr.</a> and <a href='https://dcc.ufmg.br/professor/pedro-olmo-stancioli-vaz-de-melo/'>Pedro O. S. Vaz-de-Melo</a> that was accepted at the 2020 FC Barcelona Analytics in Sports Tomorrow Congress.</p> <!-- This is your video description -->
     </div>
     <div class="col-12 embed-responsive embed-responsive-16by9">
         {% include video.html path="https://www.youtube.com/embed/MyqzmCHs_iw" class="img-fluid rounded z-depth-1 embed-responsive-item" %}

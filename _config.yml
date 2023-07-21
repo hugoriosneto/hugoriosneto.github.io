@@ -3,9 +3,9 @@
 # -----------------------------------------------------------------------------
 
 title: Sports Analytics Lab (SALab) @ UFMG # the website title (if blank, full name will be used instead)
-first_name: SA
+first_name:
 middle_name:
-last_name: Lab
+last_name: SALab
 email: salab.dcc.ufmg@gmail.com
 description: > # the ">" symbol means to ignore newlines until "footer_text:"
   The Sports Analytics Lab at the <a href='https://ufmg.br/'>Federal University of Minas Gerais (UFMG)</a> - the first of its kind in Brazil!
@@ -13,7 +13,7 @@ footer_text: >
 keywords:  # add your own keywords or leave empty
 
 lang: en # the language of your site (for example: en, fr, cn, ru, etc.)
-icon: salab-logo # the emoji used as the favicon (alternatively, provide image name in /assets/img/)
+icon: salab-logo.jpg # the emoji used as the favicon (alternatively, provide image name in /assets/img/) ⚽️
 
 url: https://SALabUFMG.github.io # the base hostname & protocol for your site
 baseurl:  # the subpath of your site, e.g. /blog/
@@ -103,7 +103,6 @@ youtube_id: # your youtube channel id (youtube.com/@<youtube_id>)
 discord_id: # your discord id (18-digit unique numerical identifier)
 
 contact_note: >
-  You can even add a little note about which of these is the best way to reach you.
 
 # -----------------------------------------------------------------------------
 # Analytics and search engine verification
