@@ -1,13 +1,30 @@
 ---
-layout: post
+layout: distill
 title:  The Tactical Influence of Analytics in Soccer
-date:   2020-05-23 16:20:20
-description: My first blog post at Footure, providing a brief overview of the current landscape in Soccer Analytics (this was completely new in Brazil at the time) & arguing about the tactical influence metrics such as Pitch Control can have in games.
+date:   2020-05-23
+description: My first blog post at Footure, providing a brief overview of the current landscape in Soccer Analytics (this was completely new in Brazil at the time) & presenting a use case of the Pitch Control metric in evaluating decision-making.
 tags: soccer implementation
 categories: scientific-divulgation
+featured: true
+
+authors:
+  - name: Hugo Rios-Neto
+    url: "https://hugoriosneto.github.io"
+    affiliations:
+      name: Clube Atlético Mineiro & UFMG
+
+toc:
+  - name: Disclaimer
+  - name: Introduction
+  - name: Contextualization
+  - name: Analysis
+    subsections:
+       - name: Neuer vs. Mané
+       - name: Forster vs. Salah
+  - name: Conclusion
 ---
 
-<h4>Disclaimer</h4>
+## Disclaimer
 
 This blog post is a translation from <a href="https://footure.com.br/analytics-friends-of-tracking-liverpool-neuer/">a blog post</a> I wrote in Portuguese for 
 <a href="https://footure.com.br/">Footure</a> in 2020, using concepts I had learned from <a href="https://www.youtube.com/@friendsoftracking755">Friends of Tracking</a>. 
@@ -16,7 +33,7 @@ how I wrote it back then.
 
 {% twitter https://twitter.com/FootureFC/status/1264217046293843968 %}
 
-<h3>Introduction</h3>
+## Introduction
 
 <div class="row mt-3">
     {% include figure.html path="assets/img/blog/footure_1_0.jpg" class="img-fluid rounded z-depth-1" %}
@@ -44,7 +61,7 @@ After a few weeks of content on the channel, <strong>David Sumpter proposed a <a
     To prepare a quantitative analysis of how Liverpool scores goals, using some of the techniques taught by them on the channel. Optical tracking data of 19 goals scored by Liverpool in 2019 were made available.
 </blockquote>
 
-<h3>Contextualization</h3>
+## Contextualization
 
 There are two main types of data that can be collected in soccer matches: <strong>event data</strong> and <strong>optical tracking data</strong>.
 
@@ -104,23 +121,19 @@ from zero to one, which indicates who would control the ball if it went there. T
 below is the moment when Alexander Arnold makes a low cross for Firmino to score Liverpool's third goal against Leicester, in the 
 game played on 12/26/2019. The players' numbers correspond to their jersey numbers.
 
-<h3>Analysis</h3>
+## Analysis
 
 Upon watching the 19 goals, <strong>it is noticeable how Liverpool likes to exploit the space left behind the last line of defenders</strong>, 
 with Salah and Mané, whether the opponent is in a high defensive block or in a counter-attack situation. However, it seems that if the opposing 
 goalkeepers had positioned themselves better in some of the plays, the passes could have been cut off.
 
-<h5>Neuer vs. Mané</h5>
+### Neuer vs. Mané
 
 The first goal to be analyzed is Liverpool's first in the second leg of the 2019 Champions League quarter-finals, scored by Mané. 
 The video below shows the evolution of the play, from Van Dijk's launch to Mané's finish, bearing in mind that the available data 
 does not have the location of all players at the same time, so goalkeeper Alisson does not appear.
 
-<div class="row mt-3">
-    <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/rUIVLivljCk" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
-    </div>
-</div>
+{% include video.html path="https://www.youtube.com/embed/rUIVLivljCk" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
 
 Let's analyze the play at the moment when Van Dijk attempts the pass. On the left (Figure 2), is the players' arrangement at 
 the time of the pass and, on the right (Figure 2), the Pitch Control Map of the moment. The 'X', on the fields, represents the 
@@ -167,23 +180,15 @@ for a more accurate model, it would be necessary to take into account different 
 faster than Neuer), as well as body orientation (in this sense, Neuer would have an advantage, for being facing the play), as both affect the time each 
 player would reach a field space.
 
-<h5>Forster vs. Salah</h5>
+### Forster vs. Salah
 
 Having good positioning only at the moment of the pass attempt is not enough to intervene in the play. The interpretation of which spaces to control is continuous. 
 This becomes evident in Liverpool's first goal over Watford, a match played on 12/14/2019. The video below shows the development of the play, which ended up 
 being concluded in a goal.
 
-<div class="row mt-3">
-    <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/R09uTGzg1BQ" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
-    </div>
-</div>
+{% include video.html path="https://www.youtube.com/embed/R09uTGzg1BQ" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
 
-<div class="row mt-3">
-    <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/Mvnxpc8PE4w" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
-    </div>
-</div>
+{% include video.html path="https://www.youtube.com/embed/Mvnxpc8PE4w" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
 
 Firstly, I calculated the general PCM at the moment when Mané makes the pass (Figure 4) to try to better understand what was happening on the field. 
 As in the previous figures, the 'X' indicates the place where the reception was made. Again, the place where the pass is dominated by the Liverpool 
@@ -222,7 +227,7 @@ The introduction of the concept of Space Control allows us to analyze the game i
 for both teams to explore, a fact that was limited to the analyst's intuition when there were not enough tools for that. There are an infinity of 
 possible ways to explore Pitch Control, and I explored just one of them in the text.
 
-<h3>Conclusion</h3>
+## Conclusion
 
 The main objective was to present a little of the world of analytics in soccer, to bring the concept of Space Control (currently in great evidence) 
 and, finally, to analyze how this applies to the game and what conclusions we can draw. Optical tracking data bring real possibilities of impact on 
