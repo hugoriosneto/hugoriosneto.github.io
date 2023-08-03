@@ -22,6 +22,17 @@
   },
   "work": [
     {
+      "name": "Gemini Sports Analytics",
+      "position": "Intelligence Engineer",
+      "url": "https://geminisports.co/",
+      "startDate": "2023-07-31",
+      "endDate": "",
+      "summary": "",
+      "highlights": [
+
+      ]
+    },
+    {
       "name": "Clube Atlético Mineiro",
       "position": "Data Scientist",
       "url": "https://atletico.com.br/",
@@ -38,10 +49,10 @@
     {
       "institution": "Universidade Federal de Minas Gerais (UFMG), Belo Horizonte, Brazil",
       "url": "https://ufmg.br/",
-      "area": "Computational Mathematics",
-      "studyType": "BSc",
-      "startDate": "2018-03-01",
-      "endDate": "2022-07-01",
+      "area": "Computer Science",
+      "studyType": "MSc",
+      "startDate": "2022-08-01",
+      "endDate": "",
       "score": "",
       "courses": [
 
@@ -50,10 +61,10 @@
     {
       "institution": "Universidade Federal de Minas Gerais (UFMG), Belo Horizonte, Brazil",
       "url": "https://ufmg.br/",
-      "area": "Computer Science",
-      "studyType": "MSc",
-      "startDate": "2022-08-01",
-      "endDate": "",
+      "area": "Computational Mathematics",
+      "studyType": "BSc",
+      "startDate": "2018-03-01",
+      "endDate": "2022-07-01",
       "score": "",
       "courses": [
 

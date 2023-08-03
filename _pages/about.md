@@ -13,8 +13,8 @@ latest_posts: true  # includes a list of the newest posts
 social: true  # includes social icons at the bottom of the page
 ---
 
-Welcome to my personal website! I'm Hugo Rios-Neto, a data science and machine learning researcher. I currently hold a data scientist role at 
-<a href="https://atletico.com.br/">Clube Atlético Mineiro</a>.
+Welcome to my personal website! I'm Hugo Rios-Neto, a machine learning researcher. I currently hold an intelligence engineer role at 
+<a href="https://geminisports.co/">Gemini Sports Analytics</a>.
 
 My academic journey has taken me from a BSc in Computational Mathematics to an ongoing Masters in Computer Science, both at 
 <a href="https://ufmg.br/">Universidade Federal de Minas Gerais</a>. I've always had a passion for soccer, and I've been fortunate enough to marry this love 
