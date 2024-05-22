@@ -85,7 +85,7 @@ nav_order: 3
 <div class="row mt-3">
     <div class="col-12">
         <h3><a href='https://barcainnovationhub.fcbarcelona.com/'>Barça Innovation Hub</a> Webinar (2021/06)</h3> <!-- This is your video header -->
-        <p>I was invited to present again his work from the previous year's conference to open a series of webinar that seeked to promote the <a href='https://sportstomorrow.fcbarcelona.com/sports-tomorrow-2021/'>2021 FC Barcelona Sports Tomorrow Congress</a>.</p> <!-- This is your video description -->
+        <p>I was invited to present my work from the previous year's conference and to talk about my experience in joining Atlético Mineiro to open a series of webinars that sought to promote the <a href='https://sportstomorrow.fcbarcelona.com/sports-tomorrow-2021/'>2021 FC Barcelona Sports Tomorrow Congress</a>.</p> <!-- This is your video description -->
     </div>
     <div class="col-12 embed-responsive embed-responsive-16by9">
         {% include video.html path="https://www.youtube.com/embed/JC38450JDlc" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
@@ -97,7 +97,7 @@ nav_order: 3
 <div class="row mt-3">
     <div class="col-12">
         <h3><a href='https://sportstomorrow.fcbarcelona.com/project/analytics-in-sports-tomorrow-2020/'>FC Barcelona Analytics in Sports Tomorrow Congress</a> (2020/11)</h3> <!-- This is your video header -->
-        <p>I presented the work he developed with <a href='https://dcc.ufmg.br/professor/wagner-meira-junior/'>Wagner Meira Jr.</a> and <a href='https://dcc.ufmg.br/professor/pedro-olmo-stancioli-vaz-de-melo/'>Pedro O. S. Vaz-de-Melo</a> that was accepted at the 2020 FC Barcelona Analytics in Sports Tomorrow Congress.</p> <!-- This is your video description -->
+        <p>I presented the work developed with <a href='https://dcc.ufmg.br/professor/wagner-meira-junior/'>Wagner Meira Jr.</a> and <a href='https://dcc.ufmg.br/professor/pedro-olmo-stancioli-vaz-de-melo/'>Pedro O. S. Vaz-de-Melo</a> that was accepted at the 2020 FC Barcelona Analytics in Sports Tomorrow Congress.</p> <!-- This is your video description -->
     </div>
     <div class="col-12 embed-responsive embed-responsive-16by9">
         {% include video.html path="https://www.youtube.com/embed/MyqzmCHs_iw" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
