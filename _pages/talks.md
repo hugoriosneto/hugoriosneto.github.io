@@ -11,6 +11,18 @@ nav_order: 3
 
 <div class="row mt-3">
     <div class="col-12">
+        <h3>Data Footure Ep. 04 (2024/05) [PT]</h3> <!-- This is your video header -->
+        <p>The fourth episode of the Data Footure podcast that I'm a host of.</p> <!-- This is your video description -->
+    </div>
+    <div class="col-12 embed-responsive embed-responsive-16by9">
+        {% include video.html path="https://www.youtube.com/embed/5mkeCZEhzGA?si=bk1Yy_1Gm_33Vq_f" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
+    </div>
+</div>
+
+<hr>
+
+<div class="row mt-3">
+    <div class="col-12">
         <h3>Data Footure Ep. 03 (2024/05) [PT]</h3> <!-- This is your video header -->
         <p>The third episode of the Data Footure podcast that I'm a host of.</p> <!-- This is your video description -->
     </div>
