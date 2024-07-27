@@ -7,51 +7,17 @@ nav: true
 nav_order: 3
 ---
 
-<hr>
 
-<div class="row mt-3">
-    <div class="col-12">
-        <h3>Data Footure Ep. 04 (2024/05) [PT]</h3> <!-- This is your video header -->
-        <p>The fourth episode of the Data Footure podcast that I'm a host of.</p> <!-- This is your video description -->
-    </div>
-    <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/5mkeCZEhzGA?si=bk1Yy_1Gm_33Vq_f" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
-    </div>
-</div>
 
 <hr>
 
 <div class="row mt-3">
     <div class="col-12">
-        <h3>Data Footure Ep. 03 (2024/05) [PT]</h3> <!-- This is your video header -->
-        <p>The third episode of the Data Footure podcast that I'm a host of.</p> <!-- This is your video description -->
+        <h3>Data Footure [PT]</h3> <!-- This is your video header -->
+        <p>A podcast I host with <a href='https://x.com/CcBatatinha'>Caio Batatinha</a> on the current and future state of football analytics, for <a href='https://x.com/FootureFC'>Footure</a>. Some episodes cover specific topics, other are interviews with people that work with data in clubs. Below, you can find the playlist with all episodes.</p> <!-- This is your video description -->
     </div>
     <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/BoU-JO_EuAs?si=a4cRPmnQz3cr8O3u" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
-    </div>
-</div>
-
-<hr>
-
-<div class="row mt-3">
-    <div class="col-12">
-        <h3>Data Footure Ep. 02 (2024/04) [PT]</h3> <!-- This is your video header -->
-        <p>The second episode of the Data Footure podcast that I'm a host of.</p> <!-- This is your video description -->
-    </div>
-    <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/JaiGRt9RCFM?si=L4Qyeuj5ggJFRmS3" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
-    </div>
-</div>
-
-<hr>
-
-<div class="row mt-3">
-    <div class="col-12">
-        <h3>Data Footure Ep. 01 (2024/04) [PT]</h3> <!-- This is your video header -->
-        <p>The first episode of the Data Footure podcast that I'm a host of.</p> <!-- This is your video description -->
-    </div>
-    <div class="col-12 embed-responsive embed-responsive-16by9">
-        {% include video.html path="https://www.youtube.com/embed/29Djvt6s4Ow?si=1V3sQHEXm5qQdwmb" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
+        {% include video.html path="https://www.youtube.com/embed/videoseries?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC" class="img-fluid rounded z-depth-1 embed-responsive-item" %}
     </div>
 </div>
 
