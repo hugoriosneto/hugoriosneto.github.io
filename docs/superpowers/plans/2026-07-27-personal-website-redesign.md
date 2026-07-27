@@ -22,7 +22,8 @@
 | `src/styles/global.css` | Tailwind import, base element styles, print styles |
 | `src/lib/contrast.ts` | WCAG contrast ratio maths (used by tests) |
 | `src/lib/bibtex.ts` | Builds a BibTeX string from a paper entry |
-| `src/content.config.ts` | Five collections + zod schemas |
+| `src/lib/schemas.ts` | The four zod schemas, importable by tests (uses `astro/zod`, not `astro:content`) |
+| `src/content.config.ts` | Wires the four collections to their loaders |
 | `src/content/roles.yaml` | Career trajectory stops |
 | `src/content/papers.yaml` | Four papers |
 | `src/assets/papers/*.png` | Four paper previews, cropped square via `astro:assets` |
@@ -743,14 +744,16 @@ git commit -m "chore: migrate real assets to public/, drop template demo files"
 ### Task 6: Content collections and schemas
 
 **Files:**
-- Create: `src/content.config.ts`, `tests/unit/content-schema.test.ts`
+- Create: `src/lib/schemas.ts`, `src/content.config.ts`, `tests/unit/content-schema.test.ts`
+
+**Why the schemas live in `src/lib/schemas.ts` and not in `content.config.ts`:** the latter must import `defineCollection` from `astro:content`, a virtual module that only exists inside an Astro build. Vitest runs in plain Node and cannot resolve it, so a test importing `content.config.ts` fails at import time with no useful message. Astro re-exports zod at `astro/zod`, which is a real module path and resolves anywhere — so the schemas import from there, the test imports the schemas, and `content.config.ts` is left as a thin wiring file with nothing worth unit-testing in it.
 
 - [ ] **Step 1: Write the failing schema test**
 
 `tests/unit/content-schema.test.ts`:
 ```ts
 import { describe, it, expect } from 'vitest';
-import { roleSchema, paperSchema, talkSchema, fameSchema } from '../../src/content.config';
+import { roleSchema, paperSchema, talkSchema, fameSchema } from '../../src/lib/schemas';
 
 describe('roleSchema', () => {
   const valid = {
@@ -841,15 +844,14 @@ describe('fameSchema', () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run tests/unit/content-schema.test.ts`
-Expected: FAIL — cannot resolve `src/content.config`.
+Expected: FAIL — cannot resolve `src/lib/schemas`.
 
-- [ ] **Step 3: Implement `src/content.config.ts`**
+- [ ] **Step 3: Implement `src/lib/schemas.ts`**
 
 The `blurb` refinement is what mechanically enforces the spec's "remit, never headcount, no reporting lines" rule — a future edit that reintroduces either fails the build.
 
 ```ts
-import { defineCollection, z } from 'astro:content';
-import { file } from 'astro/loaders';
+import { z } from 'astro/zod';
 
 const BANNED_IN_BLURB = /\b(team of \w+|reports? to|reported to|reporting to|headcount|direct reports?)\b/i;
 
@@ -916,6 +918,22 @@ export const fameSchema = z.object({
   path: ['detail'],
 });
 
+```
+
+- [ ] **Step 4: Run it to verify it passes**
+
+Run: `npx vitest run tests/unit/content-schema.test.ts`
+Expected: `13 passed`.
+
+- [ ] **Step 5: Wire the collections in `src/content.config.ts`**
+
+Thin by design — the schemas are already tested, so this file only maps them to loaders.
+
+```ts
+import { defineCollection } from 'astro:content';
+import { file } from 'astro/loaders';
+import { roleSchema, paperSchema, talkSchema, fameSchema } from './lib/schemas';
+
 export const collections = {
   roles: defineCollection({ loader: file('src/content/roles.yaml'), schema: roleSchema }),
   papers: defineCollection({ loader: file('src/content/papers.yaml'), schema: paperSchema }),
@@ -924,15 +942,17 @@ export const collections = {
 };
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [ ] **Step 6: Verify the build tolerates collections whose YAML does not exist yet**
 
-Run: `npx vitest run tests/unit/content-schema.test.ts`
-Expected: `13 passed`.
+Task 7 writes the four YAML files. Until then the loaders point at missing paths.
 
-- [ ] **Step 5: Commit**
+Run: `npm run build`
+Expected: the build **completes**. Astro warns about missing collection files but does not fail. If it fails instead, stop and report — Tasks 6 and 7 would need merging, and I need to know rather than have you paper over it by creating empty YAML files.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add src/content.config.ts tests/unit/content-schema.test.ts
+git add src/lib/schemas.ts src/content.config.ts tests/unit/content-schema.test.ts
 git commit -m "feat: add content collections with schemas enforcing the positioning rules"
 ```
 
