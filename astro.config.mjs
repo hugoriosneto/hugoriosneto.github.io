@@ -1,20 +1,19 @@
 import { defineConfig } from 'astro/config';
-import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://hugoriosneto.github.io',
   trailingSlash: 'ignore',
-  integrations: [mdx(), sitemap()],
+  integrations: [sitemap()],
   vite: { plugins: [tailwindcss()] },
   redirects: {
     '/papers': '/research',
     '/blog': '/',
-    '/writing': '/',
     '/repositories': '/',
-    '/blog/2020/tactical-influence-analytics': '/writing/tactical-influence-of-analytics',
-    '/blog/2023/fame-recap': '/writing/fame-23-recap',
+    // Both posts are deleted, so their URLs land on the homepage rather than a page.
+    '/blog/2020/tactical-influence-analytics': '/',
+    '/blog/2023/fame-recap': '/',
     // The old news collection. Astro static redirects do not support wildcards —
     // `'/news/[...slug]'` fails the build with GetStaticPathsRequired — so the four
     // URLs Jekyll actually emitted are enumerated.

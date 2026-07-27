@@ -12,7 +12,6 @@
     "check": "astro check"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.2.0",
     "@astrojs/sitemap": "^3.3.0",
     "@fontsource-variable/inter": "^5.2.5",
     "@fontsource-variable/source-serif-4": "^5.2.5",
