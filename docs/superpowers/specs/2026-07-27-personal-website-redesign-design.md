@@ -87,9 +87,9 @@ Base is **cream `#FBF3D5`** — not white. A tinted page makes white cards genui
 | Token | Value | Use |
 |---|---|---|
 | `--bg` | `#FBF3D5` | Page background |
-| `--ink` | `#151a15` | Body text |
-| `--dim` | `#6a6b5f` | Secondary text |
-| `--faint` | `#9a9481` | Metadata, years |
+| `--ink` | `#151a15` | Body text — 16.6:1 |
+| `--dim` | `#575849` | Secondary text — 6.5:1 |
+| `--faint` | `#6f6c5c` | Metadata, years — 4.8:1 |
 | `--acc` | `#0a7d33` | **Text and links** — 4.7:1 on cream, passes WCAG AA |
 | `--accfill` | `#009739` | **Fills and graphics only** — flag green is 3.8:1 on white and must never be text |
 | `--acc2` | `#012169` | Secondary accent — kickers, tags |
@@ -98,6 +98,8 @@ Base is **cream `#FBF3D5`** — not white. A tinted page makes white cards genui
 | `--hair` / `--hair2` | `#eee3bd` / `#ddd0a4` | Dividers, borders |
 
 Flag yellow appears as a `linear-gradient(transparent 60%, rgba(254,221,0,.85) 60%)` highlighter behind **one word per line**, and only in the hero. A fourth use on the page tips it into loud.
+
+**Every text token is contrast-tested in CI**, not eyeballed. The values above are the corrected ones: the first-pass `--dim` (`#6a6b5f`) and `--faint` (`#9a9481`) measured 4.86:1 and **2.72:1** — the latter failing AA outright for the years and venue metadata it was carrying. Any future token change must keep all text-on-`--bg` and text-on-`--card` pairs at ≥ 4.5:1.
 
 **Tricolour rule motif** — a 3px green/yellow/blue bar, used under the nav, on section rules, and on the favicon. This is the only place all three colours appear together.
 
