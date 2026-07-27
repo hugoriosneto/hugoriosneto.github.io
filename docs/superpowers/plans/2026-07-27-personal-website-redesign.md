@@ -534,7 +534,11 @@ git commit -m "feat: add design tokens with enforced WCAG AA contrast tests"
 - [ ] **Step 1: Create `src/styles/global.css`**
 
 ```css
-@import 'tailwindcss';
+/* `source('../')` scopes class detection to src/. Without it Tailwind's automatic
+   scanner walks the whole repo including docs/, where the prose of this very plan
+   contains words like "antialiased" and "block" — and generates dead utilities from
+   them. That makes the shipped CSS depend on the contents of planning documents. */
+@import 'tailwindcss' source('../');
 @import '@fontsource-variable/source-serif-4';
 @import '@fontsource-variable/inter';
 @import './tokens.css';
