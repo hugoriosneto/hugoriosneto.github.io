@@ -75,8 +75,10 @@ Old permalinks must not break. Minimum redirect map:
 | `/blog/` | `/` |
 | `/writing/` | `/` — there is no writing index; the two posts are reached from their pillar pages |
 | `/repositories/` | `/` |
-| `/news/*` | `/` |
+| `/news/`, `/news/1_welcome/`, `/news/2_leave_cam/`, `/news/3_join_gemini/` | `/` — enumerated, because Astro's static redirects do not support wildcards |
 | `/talks/`, `/cv/` | unchanged |
+
+**Paper PDFs keep their existing URLs.** `/assets/pdf/eniac23.pdf`, `gabr.pdf` and `obso.pdf` stay exactly where they are — they are the most-linked assets on the site and appear in external citations. A redirect cannot save them, because a redirect key ending in `.pdf` emits a directory containing `index.html` and would serve HTML in answer to a PDF request.
 
 ## 5. Visual system
 

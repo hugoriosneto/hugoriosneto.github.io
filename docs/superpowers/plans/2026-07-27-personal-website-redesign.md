@@ -73,6 +73,7 @@
     "astro": "^5.6.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.4",
     "@axe-core/playwright": "^4.10.1",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.1.4",
@@ -82,6 +83,8 @@
   }
 }
 ```
+
+`@astrojs/check` is not optional. Without it `astro check` prints an install prompt and **exits 0**, so `npm run check` reports success while typechecking nothing — and plain `tsc` does not inspect `.astro` files at all. Verify after install that `npm run check` genuinely runs: `npm run check < /dev/null` must report a file count, not an install prompt.
 
 - [ ] **Step 2: Create `astro.config.mjs`**
 
@@ -105,9 +108,18 @@ export default defineConfig({
     '/repositories': '/',
     '/blog/2020/tactical-influence-analytics': '/writing/tactical-influence-of-analytics',
     '/blog/2023/fame-recap': '/writing/fame-23-recap',
+    // The old news collection. Astro static redirects do not support wildcards —
+    // `'/news/[...slug]'` fails the build with GetStaticPathsRequired — so the four
+    // URLs Jekyll actually emitted are enumerated.
+    '/news': '/',
+    '/news/1_welcome': '/',
+    '/news/2_leave_cam': '/',
+    '/news/3_join_gemini': '/',
   },
 });
 ```
+
+`build.format` defaults to `'directory'`, so each key emits `dist/<key>/index.html` and the old trailing-slash URLs (`/papers/`, `/blog/2020/tactical-influence-analytics/`) resolve to it directly. `trailingSlash: 'ignore'` is Astro's default and is stated here for documentation.
 
 - [ ] **Step 3: Create `tsconfig.json` and `.nvmrc`**
 
@@ -120,9 +132,9 @@ export default defineConfig({
 }
 ```
 
-`.nvmrc`:
+`.nvmrc` — Node 22, the Active LTS. Node 20 reached end of life on 2026-04-30 and CI would otherwise run an unpatched runtime:
 ```
-20
+22
 ```
 
 - [ ] **Step 4: Create a placeholder `src/pages/index.astro` so the build has a route**
@@ -518,16 +530,18 @@ git commit -m "refactor: remove Jekyll site and add global styles"
 Everything not listed here is a template demo asset and stays deleted.
 
 **Files:**
-- Create: `public/pdf/`, `public/img/`, `public/robots.txt`
+- Create: `public/assets/pdf/`, `public/img/`, `public/robots.txt`
 - Delete: `assets/`
 
-- [ ] **Step 1: Move the three real PDFs**
+- [ ] **Step 1: Move the three real PDFs, preserving their public URLs**
+
+They go to `public/assets/pdf/`, **not** `public/pdf/`, so the served URL stays `/assets/pdf/eniac23.pdf` exactly as it is today. Papers are the most-linked things on an academic site and those URLs appear in citations and other people's pages. A redirect cannot rescue them: an Astro redirect key ending in `.pdf` would emit `dist/assets/pdf/eniac23.pdf/index.html` and serve HTML in response to a PDF request. Keeping the path is the only clean answer.
 
 ```bash
-mkdir -p public/pdf public/img/papers public/img/writing
-git mv assets/pdf/eniac23.pdf public/pdf/eniac23.pdf
-git mv assets/pdf/gabr.pdf public/pdf/gabr.pdf
-git mv assets/pdf/obso.pdf public/pdf/obso.pdf
+mkdir -p public/assets/pdf public/img/papers public/img/writing
+git mv assets/pdf/eniac23.pdf public/assets/pdf/eniac23.pdf
+git mv assets/pdf/gabr.pdf public/assets/pdf/gabr.pdf
+git mv assets/pdf/obso.pdf public/assets/pdf/obso.pdf
 ```
 
 Note: the 2024 GraphEPV paper has **no local PDF** — its `papers.yaml` entry links out to Springer instead.
@@ -565,7 +579,7 @@ Sitemap: https://hugoriosneto.github.io/sitemap-index.xml
 
 - [ ] **Step 6: Verify the kept files are all present**
 
-Run: `ls public/pdf public/img/papers public/img/writing public/img/hugo-rios-neto.jpg`
+Run: `ls public/assets/pdf public/img/papers public/img/writing public/img/hugo-rios-neto.jpg`
 Expected: 3 PDFs, 4 paper previews, 6 writing images, 1 portrait. No `example_pdf.pdf`, no `brownian-motion.gif`.
 
 - [ ] **Step 7: Commit**
@@ -903,7 +917,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     - Hugo Rios-Neto
     - Adriano C. M. Pereira
     - Wagner Meira Jr.
-  pdf: /pdf/eniac23.pdf
+  pdf: /assets/pdf/eniac23.pdf
   preview: /img/papers/eniac23.png
   bibtexKey: valadao2023characterizing
   bibtexType: inproceedings
@@ -916,7 +930,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   authors:
     - Ricardo Furbino M. Nascimento
     - Hugo Rios-Neto
-  pdf: /pdf/gabr.pdf
+  pdf: /assets/pdf/gabr.pdf
   preview: /img/papers/gabr.png
   bibtexKey: furbino2022generalized
   bibtexType: inproceedings
@@ -930,7 +944,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     - Hugo Rios-Neto
     - Wagner Meira Jr.
     - Pedro O. S. Vaz-de-Melo
-  pdf: /pdf/obso.pdf
+  pdf: /assets/pdf/obso.pdf
   preview: /img/papers/obso.png
   bibtexKey: riosneto2020new
   bibtexType: inproceedings
@@ -1855,7 +1869,7 @@ test('a paper row expands to show authors and links', async ({ page }) => {
   await expect(row.getByText('Ricardo Furbino')).toBeHidden();
   await row.locator('summary').click();
   await expect(row.getByText('Ricardo Furbino')).toBeVisible();
-  await expect(row.getByRole('link', { name: 'PDF' })).toHaveAttribute('href', '/pdf/gabr.pdf');
+  await expect(row.getByRole('link', { name: 'PDF' })).toHaveAttribute('href', '/assets/pdf/gabr.pdf');
 });
 
 test('the 2024 paper has no local PDF link', async ({ page }) => {
@@ -2721,6 +2735,8 @@ Expected: `public/img/og.png` exists. Confirm with `file public/img/og.png` — 
 ```ts
 import { test, expect } from '@playwright/test';
 
+// Must stay in lockstep with the `redirects` map in astro.config.mjs. A redirect
+// missing from both is invisible to this test, so check the config when editing.
 const REDIRECTS: [string, string][] = [
   ['/papers', '/research'],
   ['/blog', '/'],
@@ -2728,6 +2744,10 @@ const REDIRECTS: [string, string][] = [
   ['/repositories', '/'],
   ['/blog/2020/tactical-influence-analytics', '/writing/tactical-influence-of-analytics'],
   ['/blog/2023/fame-recap', '/writing/fame-23-recap'],
+  ['/news', '/'],
+  ['/news/1_welcome', '/'],
+  ['/news/2_leave_cam', '/'],
+  ['/news/3_join_gemini', '/'],
 ];
 
 for (const [from, to] of REDIRECTS) {
@@ -2768,7 +2788,16 @@ test('every internal link on every page resolves', async ({ page, request }) => 
 - [ ] **Step 5: Run the routing test**
 
 Run: `npx playwright test tests/e2e/routing.spec.ts --project=desktop`
-Expected: `10 passed`.
+Expected: `14 passed` (10 redirects + 404 + sitemap + internal links + the PDF check below).
+
+Also confirm the three paper PDFs kept their original URLs, since those appear in external citations:
+
+```bash
+for f in eniac23 gabr obso; do
+  curl -sI "http://localhost:4321/assets/pdf/$f.pdf" | head -1
+done
+```
+Expected: three `200` responses. If any 404s, the files went to `public/pdf/` instead of `public/assets/pdf/` in Task 5.
 
 - [ ] **Step 6: Commit**
 
