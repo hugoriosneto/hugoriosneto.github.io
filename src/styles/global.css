@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/source-serif-4';
+@import '@fontsource-variable/inter';
+@import './tokens.css';
+
+/* Only the two font families are mapped into @theme, because only the `font-serif`
+   and `font-sans` utilities are ever used. Colour utilities (`bg-bg`, `text-ink`…)
+   appear nowhere in this plan — every consumer writes `text-[var(--acc)]` — so
+   mapping 11 --color-* entries would be dead weight. Note the names differ from
+   the token names on purpose; see the comment in tokens.css. */
+@theme {
+  --font-serif: var(--font-display);
+  --font-sans: var(--font-body);
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+.highlight {
+  background: linear-gradient(transparent 60%, var(--mark) 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  html { background: #fff; color: #000; }
+  a { text-decoration: none; color: #000; }
+  a[href^='http']::after { content: ' (' attr(href) ')'; font-size: 0.75em; color: #444; }
+}
