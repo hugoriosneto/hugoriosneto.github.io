@@ -16,13 +16,13 @@ describe('toBibtex', () => {
   });
 
   it('joins authors with " and "', () => {
-    expect(toBibtex(paper)).toContain('author   = {Ricardo Furbino M. Nascimento and Hugo Rios-Neto}');
+    expect(toBibtex(paper)).toContain('author    = {Ricardo Furbino M. Nascimento and Hugo Rios-Neto}');
   });
 
   it('includes title, year and booktitle', () => {
     const out = toBibtex(paper);
-    expect(out).toContain('title    = {Generalized Action-based Ball Recovery Model using 360º data}');
-    expect(out).toContain('year     = {2022}');
+    expect(out).toContain('title     = {Generalized Action-based Ball Recovery Model using 360º data}');
+    expect(out).toContain('year      = {2022}');
     expect(out).toContain('booktitle = {StatsBomb Conference}');
   });
 
@@ -36,5 +36,15 @@ describe('toBibtex', () => {
 
   it('closes the entry', () => {
     expect(toBibtex(paper).trimEnd().endsWith('}')).toBe(true);
+  });
+
+  it('aligns every equals sign in the same column', () => {
+    // This output gets pasted into other people's .bib files; ragged columns read
+    // as sloppy from someone whose whole positioning is rigour.
+    const cols = toBibtex({ ...paper, publisher: 'Springer' })
+      .split('\n')
+      .filter((l) => l.includes(' = '))
+      .map((l) => l.indexOf('='));
+    expect(new Set(cols).size).toBe(1);
   });
 });
