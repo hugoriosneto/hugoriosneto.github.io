@@ -60,7 +60,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview --port 4321",
+    "preview": "astro preview --port 4322",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "check": "astro check"
@@ -198,7 +198,11 @@ export default defineConfig({
 
 - [ ] **Step 2: Create `playwright.config.ts`**
 
-`reuseExistingServer` is false so CI always tests a fresh production build rather than a stale dev server.
+Three things here are deliberate and were each got wrong in an earlier draft:
+
+- **Port 4322, not 4321.** `astro dev` defaults to 4321, and with `reuseExistingServer: false` a developer who has `npm run dev` open gets a hard stop whose error message suggests setting `reuseExistingServer: true` — which would defeat the fresh-build guarantee and let a dev server (with its Vite HMR client injected) satisfy Task 19's "ships no JavaScript" test. Separate ports make that impossible.
+- **`html` reporter in CI as well as `github`.** The `github` reporter writes no HTML report, so Task 20's `playwright-report/` artefact upload would silently upload nothing.
+- **`trace` and `screenshot` on failure.** Tasks 9–19 add roughly 45 assertions. Without these, a CI failure in Task 19's axe run gives you a large nested JSON diff in an annotation and no way to tell which element was at fault.
 
 ```ts
 import { defineConfig, devices } from '@playwright/test';
@@ -206,20 +210,28 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
-  reporter: process.env.CI ? 'github' : 'list',
-  use: { baseURL: 'http://localhost:4321' },
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
+  use: {
+    baseURL: 'http://localhost:4322',
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+  },
   projects: [
     { name: 'desktop', use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } } },
     { name: 'mobile', use: { ...devices['iPhone 13'] } },
   ],
   webServer: {
     command: 'npm run build && npm run preview',
-    url: 'http://localhost:4321',
+    url: 'http://localhost:4322',
     reuseExistingServer: false,
     timeout: 120_000,
   },
 });
 ```
+
+`retries` stays at 0 deliberately. Two tests wait on `networkidle` and are genuinely flake-prone, but one of them (Task 15) asserts the security-relevant invariant that no third-party host is contacted before a click — a retry there would paper over a real intermittent request.
+
+**`devices['iPhone 13']` runs WebKit, not Chromium.** That is the point — it is the only real Safari-engine coverage in the suite, and this design leans on `color-mix()`, `backdrop-filter`, `aspect-ratio` and styled `<details>`, all of which have historically differed in WebKit. It does mean WebKit must be installed everywhere the suite runs.
 
 - [ ] **Step 3: Write a smoke test that proves Vitest runs**
 
@@ -239,12 +251,38 @@ describe('vitest', () => {
 Run: `npm test`
 Expected: `1 passed`.
 
-- [ ] **Step 5: Install Playwright browsers**
+- [ ] **Step 5: Install Playwright browsers — both engines**
 
-Run: `npx playwright install chromium`
-Expected: downloads and reports the Chromium build as installed.
+Run: `npx playwright install chromium webkit`
+Expected: both builds reported as installed. WebKit is required by the `mobile` project; installing only Chromium leaves half the suite unable to launch.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Prove both projects can actually launch a browser**
+
+Downloading a browser is not the same as launching one, and `playwright test --list` never starts one — so neither step so far would catch a missing engine. Write a throwaway spec, run it on both projects, then delete it.
+
+`tests/e2e/tmp-launch-check.spec.ts`:
+```ts
+import { test, expect } from '@playwright/test';
+
+test('the placeholder homepage renders', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('Hugo Rios-Neto');
+});
+```
+
+Run: `npx playwright test tmp-launch-check`
+Expected: **2 passed** — one per project. A failure reading `browserType.launch: Executable doesn't exist at .../webkit-*/pw_run.sh` means Step 5 was not run with both engines.
+
+Then delete it and confirm the tree is clean:
+```bash
+rm -f tests/e2e/tmp-launch-check.spec.ts
+rm -rf test-results playwright-report
+rmdir tests/e2e 2>/dev/null || true
+git status --short
+```
+Expected: no output from `git status --short` beyond the files this task creates.
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add vitest.config.ts playwright.config.ts tests/unit/smoke.test.ts
@@ -372,7 +410,9 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { contrastRatio } from '../../src/lib/contrast';
 
-const css = readFileSync('src/styles/tokens.css', 'utf8');
+// Resolved relative to this file, not the process CWD — Vitest leaves cwd at the
+// invocation directory, so a bare relative path only works when run from the repo root.
+const css = readFileSync(new URL('../../src/styles/tokens.css', import.meta.url), 'utf8');
 
 function token(name: string): string {
   const m = css.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,6})\\s*;`));
@@ -1393,7 +1433,14 @@ test('page declares schema.org Person data', async ({ page }) => {
 Run: `npx playwright test tests/e2e/chrome.spec.ts --project=desktop`
 Expected: `3 passed`.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 9: Establish the mobile baseline now, not at Task 19**
+
+Every subsequent task runs `--project=desktop` only, so without this the WebKit half of the suite would first execute at Task 19 — after roughly seventeen tasks of markup had been written against Chromium alone. Run it once here, on the first real page, so any WebKit divergence surfaces against three simple assertions instead of forty-five.
+
+Run: `npx playwright test tests/e2e/chrome.spec.ts --project=mobile`
+Expected: `3 passed`. If WebKit fails here, fix it now — do not defer.
+
+- [ ] **Step 10: Commit**
 
 ```bash
 git add src/layouts src/components src/pages/index.astro tests/e2e/chrome.spec.ts
@@ -2721,10 +2768,10 @@ import Base from '../layouts/Base.astro';
 
 ```bash
 npm run build
-npx --yes serve dist -l 4321 & SERVER=$!
+npx --yes serve dist -l 4322 & SERVER=$!
 sleep 3
 npx playwright screenshot --viewport-size=1200,630 --wait-for-timeout=1500 \
-  http://localhost:4321/ public/img/og.png
+  http://localhost:4322/ public/img/og.png
 kill $SERVER
 ```
 Expected: `public/img/og.png` exists. Confirm with `file public/img/og.png` — it should report `1200 x 630`.
@@ -2783,21 +2830,24 @@ test('every internal link on every page resolves', async ({ page, request }) => 
     expect(res.status(), `${href} should not 404`).toBeLessThan(400);
   }
 });
+
+test('paper PDFs keep the URLs they are cited at', async ({ request }) => {
+  // These paths appear in external citations. A redirect cannot rescue them —
+  // an Astro redirect key ending in .pdf emits a directory containing index.html
+  // and would answer a PDF request with HTML. Task 5 must place them at
+  // public/assets/pdf/ so these URLs survive untouched.
+  for (const f of ['eniac23', 'gabr', 'obso']) {
+    const res = await request.get(`/assets/pdf/${f}.pdf`);
+    expect(res.status(), `/assets/pdf/${f}.pdf should still resolve`).toBe(200);
+    expect(res.headers()['content-type']).toContain('pdf');
+  }
+});
 ```
 
 - [ ] **Step 5: Run the routing test**
 
 Run: `npx playwright test tests/e2e/routing.spec.ts --project=desktop`
-Expected: `14 passed` (10 redirects + 404 + sitemap + internal links + the PDF check below).
-
-Also confirm the three paper PDFs kept their original URLs, since those appear in external citations:
-
-```bash
-for f in eniac23 gabr obso; do
-  curl -sI "http://localhost:4321/assets/pdf/$f.pdf" | head -1
-done
-```
-Expected: three `200` responses. If any 404s, the files went to `public/pdf/` instead of `public/assets/pdf/` in Task 5.
+Expected: `14 passed` — 10 redirects, the 404, the sitemap, the internal-link sweep, and the PDF URL check.
 
 - [ ] **Step 6: Commit**
 
@@ -2965,7 +3015,7 @@ jobs:
         run: npm run build
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       - name: End-to-end tests
         run: npx playwright test
@@ -2978,7 +3028,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report/
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
 
       - name: Deploy 🚀
