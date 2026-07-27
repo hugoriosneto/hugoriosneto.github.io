@@ -770,7 +770,7 @@ describe('roleSchema', () => {
     expect(() => roleSchema.parse({ ...valid, capabilities: [] })).toThrow();
   });
 
-  it('rejects a position outside 0-100', () => {
+  it('rejects a position outside the rail', () => {
     expect(() => roleSchema.parse({ ...valid, position: 140 })).toThrow();
   });
 
@@ -1000,6 +1000,8 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
 
 **Files:**
 - Create: `src/content/roles.yaml`, `papers.yaml`, `talks.yaml`, `fame.yaml`
+
+**Every entry needs an `id:` key.** The `file()` loader builds `entry.id` from it, and an entry without one is **silently skipped at exit 0** — no error, no warning, the collection just comes back short. This is not enforceable by the zod schema, which never sees the dropped entry. Step 7's uniqueness test catches it (missing ids all collapse to `undefined`), but know the failure mode.
 
 - [ ] **Step 1: Create `src/content/roles.yaml`**
 
