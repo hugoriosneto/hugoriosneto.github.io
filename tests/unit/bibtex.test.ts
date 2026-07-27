@@ -16,12 +16,12 @@ describe('toBibtex', () => {
   });
 
   it('joins authors with " and "', () => {
-    expect(toBibtex(paper)).toContain('author    = {Ricardo Furbino M. Nascimento and Hugo Rios-Neto}');
+    expect(toBibtex(paper)).toContain('author    = {{Ricardo Furbino M. Nascimento} and {Hugo Rios-Neto}}');
   });
 
   it('includes title, year and booktitle', () => {
     const out = toBibtex(paper);
-    expect(out).toContain('title     = {Generalized Action-based Ball Recovery Model using 360º data}');
+    expect(out).toContain('title     = {{Generalized Action-based Ball Recovery Model using 360º data}}');
     expect(out).toContain('year      = {2022}');
     expect(out).toContain('booktitle = {StatsBomb Conference}');
   });
@@ -36,6 +36,35 @@ describe('toBibtex', () => {
 
   it('closes the entry', () => {
     expect(toBibtex(paper).trimEnd().endsWith('}')).toBe(true);
+  });
+
+  it('braces each author so BibTeX does not re-parse the name', () => {
+    // Unbraced, abbrv.bst reads "Wagner Meira Jr." as surname "Jr." and renders
+    // "W. M. Jr." — a co-author's surname, deleted.
+    const out = toBibtex({ ...paper, authors: ['Wagner Meira Jr.', 'Pedro O. S. Vaz-de-Melo'] });
+    expect(out).toContain('{Wagner Meira Jr.} and {Pedro O. S. Vaz-de-Melo}');
+  });
+
+  it('brace-protects the title against case-folding styles', () => {
+    // plain.bst renders an unprotected "GraphEPV" as "Graphepv".
+    expect(toBibtex({ ...paper, title: 'GraphEPV: Expected Possession Value' }))
+      .toContain('title     = {{GraphEPV: Expected Possession Value}}');
+  });
+
+  it('escapes LaTeX special characters', () => {
+    // An unescaped % comments out the rest of the line, silently.
+    const out = toBibtex({ ...paper, title: 'Improving xG by 30% & the xG_total metric' });
+    expect(out).toContain('30\\%');
+    expect(out).toContain('\\&');
+    expect(out).toContain('xG\\_total');
+  });
+
+  it('leaves accented characters as raw UTF-8', () => {
+    // Verified against TeX Live 2025 under both biber and classic bibtex.
+    const out = toBibtex({ ...paper, authors: ['Bruno M. Sá-Freire', 'Gabriel Valadão'] });
+    expect(out).toContain('Sá-Freire');
+    expect(out).toContain('Valadão');
+    expect(out).not.toContain("\\'a");
   });
 
   it('aligns every equals sign in the same column', () => {
