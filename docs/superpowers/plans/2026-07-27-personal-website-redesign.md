@@ -696,7 +696,19 @@ The six `assets/img/blog/*.jpg` figures need no explicit command — Step 4 remo
 git rm -r --quiet assets
 ```
 
-- [ ] **Step 5: Replace the Jekyll `robots.txt`**
+- [ ] **Step 5: Create `public/.nojekyll` — without it the deployed site has no CSS**
+
+An empty file. Task 20 deploys to the `gh-pages` branch, and branch-based GitHub Pages runs Jekyll over what it finds there. Jekyll ignores every path beginning with `_` — and Astro puts **all CSS, all font files and every processed image** in `dist/_astro/`. The live site would serve unstyled HTML in Times with no images, while every gate in this plan passes, because Tasks 18, 19 and 20 all test the local `dist` or `astro preview` and never the deployed artefact.
+
+The old Jekyll workflow got away without one only because Jekyll's own `_site` output contains no underscore-prefixed directories. Astro's does.
+
+```bash
+touch public/.nojekyll
+```
+
+Verify it survives the build: `test -f dist/.nojekyll && echo ok`.
+
+- [ ] **Step 6: Replace the Jekyll `robots.txt`**
 
 The old one survives at the repo root — it was not in Task 4's delete list. It is a Jekyll template, complete with Liquid frontmatter and a `{{ site.baseurl }}` interpolation that nothing will ever resolve, and it points at `sitemap.xml` where Astro emits `sitemap-index.xml`. Delete it, then create the real one under `public/`.
 
@@ -714,12 +726,12 @@ Sitemap: https://hugoriosneto.github.io/sitemap-index.xml
 
 Verify the built output has exactly one: `test -f dist/robots.txt && grep -c Liquid dist/robots.txt; grep sitemap dist/robots.txt` — must show the `sitemap-index.xml` URL and no Liquid syntax.
 
-- [ ] **Step 6: Verify the kept files are all present**
+- [ ] **Step 7: Verify the kept files are all present**
 
 Run: `ls public/assets/pdf src/assets/papers && ls public/img 2>/dev/null; ls src/content 2>/dev/null`
 Expected: 3 PDFs in `public/assets/pdf`, 4 previews in `src/assets/papers`, **no** `public/img` directory, **no** `src/content/writing`. No `example_pdf.pdf`, no `brownian-motion.gif`, no `tactical-*.jpg`, no portrait.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -1866,6 +1878,13 @@ test('Why Brazil uses the approved W2 copy', async ({ page }) => {
   await expect(why).toContainText('Closing that gap is what my career has been');
 });
 
+test('the research teaser carries the thesis and MLSA rows, not just papers', async ({ page }) => {
+  await page.goto('/');
+  const body = page.locator('body');
+  await expect(body).toContainText('thesis defended');
+  await expect(body).toContainText('13th edition');
+});
+
 test('teasers link to the full pages', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: /All research/ })).toHaveAttribute('href', '/research');
@@ -1890,6 +1909,12 @@ import SectionHead from '../components/SectionHead.astro';
 import { getCollection } from 'astro:content';
 
 const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.data.year).slice(0, 3);
+// Spec section 7 item 6 asks for three papers plus the thesis and the MLSA row —
+// the two credentials a director reader is most likely to weigh.
+const extraResearch = [
+  { year: 2026, title: 'MSc, Computer Science — thesis defended', venue: 'UFMG · February 2026', tag: 'Thesis' },
+  { year: 2026, title: 'Co-organizer, Machine Learning & Data Mining for Sports Analytics', venue: 'ECML/PKDD · Naples · 13th edition', tag: 'Workshop' },
+];
 const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.data.order).slice(0, 3);
 const fame = await getCollection('fame');
 ---
@@ -1931,6 +1956,16 @@ const fame = await getCollection('fame');
           </span>
         </li>
       ))}
+      {extraResearch.map((r) => (
+        <li class="flex items-baseline gap-4 border-b border-[var(--hair)] py-3">
+          <span class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{r.year}</span>
+          <span>
+            <span class="text-[0.9rem] font-medium leading-snug">{r.title}</span>
+            <span class="block text-xs text-[var(--faint)]">{r.venue}</span>
+          </span>
+          <span class="ml-auto shrink-0 rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">{r.tag}</span>
+        </li>
+      ))}
     </ul>
   </section>
 
@@ -1968,7 +2003,7 @@ const fame = await getCollection('fame');
 - [ ] **Step 4: Run the tests**
 
 Run: `npx playwright test tests/e2e/home.spec.ts --project=desktop`
-Expected: `7 passed`.
+Expected: `8 passed`.
 
 - [ ] **Step 5: Commit**
 
@@ -2272,8 +2307,11 @@ const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
         const on = i === j;
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
-        t.style.background = on ? 'var(--accfill)' : 'var(--card)';
-        t.style.borderColor = on ? 'var(--accfill)' : 'var(--cardline)';
+        // --acc, not --accfill: white on #009739 is 3.83:1 and fails AA at this
+        // 14px label size. White on #0a7d33 is 5.26:1. Task 19's axe gate reads
+        // computed styles after select() runs, so it would catch this.
+        t.style.background = on ? 'var(--acc)' : 'var(--card)';
+        t.style.borderColor = on ? 'var(--acc)' : 'var(--cardline)';
         t.style.color = on ? '#fff' : 'var(--dim)';
       });
       panel.setAttribute('aria-labelledby', `fame-tab-${i}`);
@@ -2421,7 +2459,7 @@ const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62r
             class="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 border-0 bg-transparent"
             aria-label={`Load ${talk.provider} embed for ${talk.title}`}>
       <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
-      <span class="text-xs text-[#7d7358]">click to load {talk.provider}</span>
+      <span class="text-xs text-[var(--dim)]">click to load {talk.provider}</span>
     </button>
   </div>
   <div class="p-4">
@@ -2803,7 +2841,7 @@ test('paper PDFs keep the URLs they are cited at', async ({ request }) => {
 - [ ] **Step 5: Run the routing test**
 
 Run: `npx playwright test tests/e2e/routing.spec.ts --project=desktop`
-Expected: `14 passed` — 10 redirects, the 404, the sitemap, the internal-link sweep, and the PDF URL check.
+Expected: `13 passed` — 9 redirects, the 404, the sitemap, the internal-link sweep, and the PDF URL check.
 
 - [ ] **Step 6: Commit**
 
@@ -2964,6 +3002,9 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Typecheck
+        run: npm run check
+
       - name: Unit tests
         run: npm test
 
@@ -3049,11 +3090,19 @@ Expected: five `ok` lines for the pages, plus `ok  no /writing route`. No `MISSI
 Run: `npx playwright test tests/e2e/talks.spec.ts -g "third-party" --project=desktop`
 Expected: PASS.
 
-- [ ] **Step 4: Drop the Jekyll entries still in `.gitignore`**
+- [ ] **Step 4: Clear the remaining al-folio residue outside `dist`**
+
+Spec §1 opens by complaining about template residue on a public repo, and Step 1's grep only inspects `dist`, so none of this would surface:
+
+- `LICENSE` still reads `MIT © 2022 Maruan Al-Shedivat` on a repo that will contain none of his code. Rewrite it as MIT in Hugo's name, or delete it if he would rather not license the site at all — ask rather than guess.
+- `.github/ISSUE_TEMPLATE/bug_report.md` and `feature_request.md` are al-folio's. Delete both.
+- `.idea/SALabUFMG.github.io.iml` is tracked and names the wrong project. Delete the tracked `.idea` files.
+
+- [ ] **Step 5: Drop the Jekyll entries still in `.gitignore`**
 
 Nine lines survive from the old toolchain and now ignore nothing: `_site`, `.bundle`, `.sass-cache`, `.jekyll-cache`, `.jekyll-metadata`, `.ruby-version`, `.tweet-cache`, `Gemfile.lock`, `vendor`. Remove them; keep `.DS_store`, `.superpowers/` and everything Task 1 added.
 
-- [ ] **Step 5: Update the README**
+- [ ] **Step 6: Update the README**
 
 Replace `README.md` with:
 ```markdown
@@ -3079,10 +3128,10 @@ Adding a paper, talk or FAME edition means adding a YAML entry — no template c
 Design decisions and their reasoning: `docs/superpowers/specs/2026-07-27-personal-website-redesign-design.md`
 ```
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add README.md .gitignore
+git add -A
 git commit -m "docs: rewrite README and drop Jekyll gitignore entries"
 ```
 
