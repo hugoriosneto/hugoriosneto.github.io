@@ -555,10 +555,11 @@ html {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  /* The nav is sticky and ~45px tall; without this the skip link and any in-page
-     anchor land with their target hidden behind it (WCAG 2.2 SC 2.4.11, which axe
-     does not flag under the wcag21aa tags Task 19 uses). */
-  scroll-padding-top: 4.5rem;
+  /* The nav is sticky; without this the skip link and any in-page anchor land with
+     their target hidden behind it (WCAG 2.2 SC 2.4.11, which axe does not flag under
+     the wcag21aa tags Task 19 uses). 5rem not 4.5rem: an earlier nav wrapped to two
+     rows at 375px and measured 73px, one pixel over the old value. */
+  scroll-padding-top: 5rem;
 }
 
 /* Deliberately unlayered, so it beats @layer utilities. That also means a future
@@ -1592,15 +1593,27 @@ const links = [
   { href: '/cv', label: 'CV', key: 'cv' },
 ];
 ---
-<nav class="sticky top-0 z-10 flex flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3 text-sm
-            border-b border-[var(--hair)] bg-[var(--bg)]/90 backdrop-blur no-print"
+<!-- Opaque, not `bg-[var(--bg)]/90 backdrop-blur`. At 90% the composited background
+     over dark content measures rgb(229,222,195), which drops the `--acc` hover link to
+     3.90:1 — below AA. Task 19's axe gate cannot catch it: axe reads the ancestor's
+     declared background-color, not the composited result, and never evaluates :hover.
+     The blur was measured at a 2.8% mean pixel delta against a hard-edged stripe
+     pattern, i.e. imperceptible over real content, for a permanent compositing layer. -->
+<nav class="sticky top-0 z-10 border-b border-[var(--hair)] bg-[var(--bg)] text-sm no-print"
      aria-label="Primary">
-  <a href="/" class="mr-auto font-semibold tracking-tight text-[var(--ink)] no-underline">Hugo Rios-Neto</a>
-  {links.slice(1).map((l) => (
-    <a href={l.href}
-       class="no-underline text-[var(--dim)] hover:text-[var(--acc)]"
-       aria-current={current === l.key ? 'page' : undefined}>{l.label}</a>
-  ))}
+  <!-- Inner wrapper matches <main>'s mx-auto max-w-4xl so the brand aligns with the h1
+       while the bar itself stays full-bleed. Tighter gaps below sm keep all six items on
+       one row at 375px; unconstrained they wrap to two, costing 28px of sticky height on
+       every page and overrunning global.css's scroll-padding-top. -->
+  <div class="mx-auto flex max-w-4xl items-center gap-x-4 px-6 py-3 sm:gap-x-6">
+    <a href="/" class="mr-auto font-semibold tracking-tight text-[var(--ink)] no-underline"
+       aria-current={current === 'home' ? 'page' : undefined}>Hugo Rios-Neto</a>
+    {links.slice(1).map((l) => (
+      <a href={l.href}
+         class="whitespace-nowrap text-[13px] text-[var(--dim)] no-underline hover:text-[var(--acc)] sm:text-sm"
+         aria-current={current === l.key ? 'page' : undefined}>{l.label}</a>
+    ))}
+  </div>
 </nav>
 ```
 
@@ -1617,7 +1630,8 @@ const links = [
   { href: 'https://scholar.google.com/citations?user=jtR1qv4AAAAJ', label: 'Google Scholar' },
 ];
 ---
-<footer class="mt-16 flex flex-wrap items-end gap-8 border-t border-[var(--hair)] px-6 py-10 no-print">
+<footer class="mt-16 border-t border-[var(--hair)] no-print">
+  <div class="mx-auto flex max-w-4xl flex-wrap items-end gap-8 px-6 py-10">
   <div>
     <div class="font-semibold text-[var(--ink)]">Hugo Rios-Neto</div>
     <div class="text-sm text-[var(--faint)]">Data Recruitment Lead, RSC Anderlecht</div>
@@ -1628,6 +1642,7 @@ const links = [
              href={l.href} rel="me noopener" target="_blank">{l.label}</a></li>
     ))}
   </ul>
+  </div>
 </footer>
 ```
 
@@ -1643,7 +1658,7 @@ const { kicker, sub, moreHref, moreLabel } = Astro.props;
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
     <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}>
-      {moreLabel ?? 'More'} →
+      {moreLabel ?? 'More'} <span aria-hidden="true">→</span>
     </a>
   )}
 </div>
@@ -1665,6 +1680,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
 const person = {
   '@context': 'https://schema.org',
   '@type': 'Person',
+  // Stable @id so the five per-page copies reconcile to one entity rather than five.
+  '@id': 'https://hugoriosneto.github.io/#person',
   name: 'Hugo Rios-Neto',
   jobTitle: 'Data Recruitment Lead',
   worksFor: { '@type': 'Organization', name: 'RSC Anderlecht' },
@@ -1693,7 +1710,7 @@ const person = {
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={new URL('/img/og.png', Astro.site).href} />
     <meta name="twitter:card" content="summary_large_image" />
-    <script type="application/ld+json" set:html={JSON.stringify(person)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(person)} />
   </head>
   <body class="min-h-screen">
     <!-- z-20 puts the skip link above the sticky nav (z-10); without it the first tab
@@ -1702,7 +1719,8 @@ const person = {
          link scrolls the page but leaves focus in the nav. -->
     <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:m-3 focus:rounded focus:bg-[var(--card)] focus:px-3 focus:py-2">Skip to content</a>
     <Nav current={current} />
-    <TricolourRule />
+    <!-- no-print: otherwise a stray 3px colour bar tops page 1 of the printed CV. -->
+    <TricolourRule class="no-print" />
     <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-6">
       <slot />
     </main>
@@ -1734,6 +1752,19 @@ test('nav exposes all five pages and marks the current one', async ({ page }) =>
   for (const label of ['Research', 'SALab & FAME', 'Talks', 'CV']) {
     await expect(nav.getByRole('link', { name: label })).toBeVisible();
   }
+  // The homepage's current-page marker sits on the brand link, since the nav renders
+  // links.slice(1). Without this assertion the whole suite had no aria-current coverage
+  // on any page, and `current="home"` was dead code nothing noticed.
+  await expect(nav.getByRole('link', { name: 'Hugo Rios-Neto' })).toHaveAttribute('aria-current', 'page');
+});
+
+test('the nav stays on one row down to 320px', async ({ page }) => {
+  // Wrapping costs 28px of sticky height on every page and overruns
+  // global.css's scroll-padding-top, landing anchors under the nav.
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto('/');
+  const h = await page.getByRole('navigation', { name: 'Primary' }).evaluate((n) => n.getBoundingClientRect().height);
+  expect(h).toBeLessThan(60);
 });
 
 test('footer shows social links and no email address', async ({ page }) => {
@@ -1754,14 +1785,14 @@ test('page declares schema.org Person data', async ({ page }) => {
 - [ ] **Step 8: Run the test**
 
 Run: `npx playwright test tests/e2e/chrome.spec.ts --project=desktop`
-Expected: `3 passed`.
+Expected: `4 passed`.
 
 - [ ] **Step 9: Establish the mobile baseline now, not at Task 19**
 
 Every subsequent task runs `--project=desktop` only, so without this the WebKit half of the suite would first execute at Task 19 — after roughly seventeen tasks of markup had been written against Chromium alone. Run it once here, on the first real page, so any WebKit divergence surfaces against three simple assertions instead of forty-five.
 
 Run: `npx playwright test tests/e2e/chrome.spec.ts --project=mobile`
-Expected: `3 passed`. If WebKit fails here, fix it now — do not defer.
+Expected: `4 passed`. If WebKit fails here, fix it now — do not defer.
 
 - [ ] **Step 10: Commit**
 
@@ -1891,6 +1922,8 @@ Accumulating, not ascending. Keyboard-operable with arrow keys, per spec §6.
 - Modify: `src/pages/index.astro`
 - Test: `tests/e2e/trajectory.spec.ts`
 
+**WebKit does not Tab to links.** Safari's "Press Tab to highlight each item" default is off, and Playwright inherits it — `page.keyboard.press('Tab')` leaves `document.activeElement` on `BODY`, so any Tab-walking assertion **passes vacuously** under `--project=mobile`. Verified in this repo. Use `locator.focus()` and `locator.press('ArrowRight')` rather than `keyboard.press('Tab')` in every keyboard test below, so it exercises both engines. The same applies to Task 14's tab switcher and Task 19.
+
 - [ ] **Step 1: Write the failing trajectory test**
 
 `tests/e2e/trajectory.spec.ts`:
@@ -1941,8 +1974,11 @@ test('never shows headcount or reporting lines, in the detail OR the chips', asy
 
 test('is keyboard operable with arrow keys', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: /Atlético Mineiro/ }).focus();
-  await page.keyboard.press('ArrowRight');
+  // locator.press, not keyboard.press after a Tab walk — WebKit does not Tab to
+  // links or buttons by default, so a Tab-based version passes vacuously on mobile.
+  const first = page.getByRole('button', { name: /Atlético Mineiro/ });
+  await first.focus();
+  await first.press('ArrowRight');
   await expect(page.getByTestId('trajectory-detail')).toContainText('SALab');
 });
 
@@ -2495,8 +2531,10 @@ test('renders the upcoming edition without a programme', async ({ page }) => {
 
 test('tabs are keyboard navigable', async ({ page }) => {
   await page.goto('/salab-fame');
-  await page.getByRole('tab', { name: /2022/ }).click();
-  await page.keyboard.press('ArrowRight');
+  const first = page.getByRole('tab', { name: /2022/ });
+  await first.click();
+  // locator.press so this exercises WebKit too — see the note on Tab in Task 11.
+  await first.press('ArrowRight');
   await expect(page.getByTestId('fame-panel')).toContainText('17 November 2023');
 });
 ```
