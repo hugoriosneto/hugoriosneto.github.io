@@ -1,26 +1,35 @@
 import { z } from 'astro/zod';
 
-const BANNED_IN_BLURB = /\b(team of \w+|reports? to|reported to|reporting to|headcount|direct reports?)\b/i;
+/* Applied to BOTH `blurb` and every `capabilities` entry. Spec §3 forbids reporting
+   lines and headcount on a role, not merely in one field — and the chips are the other
+   surface where role copy reaches the page. Guarding only the blurb left the chips with
+   no enforcement at any layer: Task 11's e2e reads the detail panel, and the CV never
+   renders capabilities at all. */
+const BANNED_PHRASE = /\b(team of \w+|reports? to|reported to|reporting to|headcount|direct reports?)\b/i;
 
-// NOTE: `id` is optional in every schema below. The `file()` loader consumes the YAML
-// `id` key to build the entry ID and may not pass it through to `data`; making it
-// required would break the build depending on loader version.
+/* No `id` field. The `file()` loader sets `entry.id` from the YAML `id` key regardless
+   of the schema, and nothing reads `entry.data.id` — Task 13 keys previews off
+   `entry.id`, Task 17 filters on `entry.id`. Declaring it would only duplicate a value
+   that already exists one level up. */
 export const roleSchema = z.object({
-  id: z.string().optional(),
   org: z.string(),
   title: z.string(),
   dates: z.string(),
   verb: z.string(),
   order: z.number().int().min(1),
-  position: z.number().min(0).max(100),
-  blurb: z.string().min(1).refine((s) => !BANNED_IN_BLURB.test(s), {
+  // 0 and 100 clip: dots carry -ml-2.5 inside a left-2 right-2 rail.
+  position: z.number().min(2).max(98),
+  blurb: z.string().min(1).refine((s) => !BANNED_PHRASE.test(s), {
     message: 'Role blurbs must state remit only — no headcount and no reporting lines (spec §3).',
   }),
-  capabilities: z.array(z.string()).min(1),
+  capabilities: z.array(
+    z.string().refine((s) => !BANNED_PHRASE.test(s), {
+      message: 'Capability chips must state remit only — no headcount and no reporting lines (spec §3).',
+    }),
+  ).min(1),
 });
 
 export const paperSchema = z.object({
-  id: z.string().optional(),
   title: z.string(),
   year: z.number().int().min(1990).max(2100),
   venue: z.string(),
@@ -36,22 +45,26 @@ export const paperSchema = z.object({
   publisher: z.string().optional(),
 });
 
+const EMBED_HOSTS = { youtube: 'www.youtube.com', vimeo: 'player.vimeo.com', spotify: 'open.spotify.com' };
+
 export const talkSchema = z.object({
-  id: z.string().optional(),
   title: z.string(),
   description: z.string(),
   provider: z.enum(['youtube', 'vimeo', 'spotify']),
   embedUrl: z.string().url().startsWith('https://'),
-  date: z.string().optional(),
   language: z.enum(['EN', 'PT']),
   format: z.enum(['Conference', 'Podcast', 'Webinar', 'Live']),
   award: z.string().optional(),
-  role: z.string().optional(),
+  // Not `role` — `roles` is the career collection and `role` is also the ARIA
+  // attribute used throughout the adjacent components. This is a billing credit.
+  credit: z.string().optional(),
   order: z.number().int(),
+}).refine((t) => EMBED_HOSTS[t.provider] === new URL(t.embedUrl).host, {
+  message: 'embedUrl host must match provider — this value goes straight into iframe.src.',
+  path: ['embedUrl'],
 });
 
 export const fameSchema = z.object({
-  id: z.string().optional(),
   edition: z.number().int().min(1),
   year: z.number().int(),
   date: z.string(),
@@ -60,7 +73,7 @@ export const fameSchema = z.object({
   detail: z.string().optional(),
   sponsors: z.array(z.string()).default([]),
   note: z.string().optional(),
-}).refine((e) => e.status === 'upcoming' || (e.detail && e.detail.length > 0), {
-  message: 'A past FAME edition must have detail.',
+}).refine((e) => (e.status === 'past' ? !!e.detail : !!e.note), {
+  message: 'A past FAME edition needs `detail`; an upcoming one needs `note`. Otherwise the panel renders blank.',
   path: ['detail'],
 });
