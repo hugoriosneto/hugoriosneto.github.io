@@ -6,7 +6,8 @@ const links = [
   { href: 'https://scholar.google.com/citations?user=jtR1qv4AAAAJ', label: 'Google Scholar' },
 ];
 ---
-<footer class="mt-16 flex flex-wrap items-end gap-8 border-t border-[var(--hair)] px-6 py-10 no-print">
+<footer class="mt-16 border-t border-[var(--hair)] no-print">
+  <div class="mx-auto flex max-w-4xl flex-wrap items-end gap-8 px-6 py-10">
   <div>
     <div class="font-semibold text-[var(--ink)]">Hugo Rios-Neto</div>
     <div class="text-sm text-[var(--faint)]">Data Recruitment Lead, RSC Anderlecht</div>
@@ -17,4 +18,5 @@ const links = [
              href={l.href} rel="me noopener" target="_blank">{l.label}</a></li>
     ))}
   </ul>
+  </div>
 </footer>

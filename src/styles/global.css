@@ -21,10 +21,11 @@ html {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  /* The nav is sticky and ~45px tall; without this the skip link and any in-page
-     anchor land with their target hidden behind it (WCAG 2.2 SC 2.4.11, which axe
-     does not flag under the wcag21aa tags Task 19 uses). */
-  scroll-padding-top: 4.5rem;
+  /* The nav is sticky; without this the skip link and any in-page anchor land with
+     their target hidden behind it (WCAG 2.2 SC 2.4.11, which axe does not flag under
+     the wcag21aa tags Task 19 uses). 5rem not 4.5rem: an earlier nav wrapped to two
+     rows at 375px and measured 73px, one pixel over the old value. */
+  scroll-padding-top: 5rem;
 }
 
 /* Deliberately unlayered, so it beats @layer utilities. That also means a future

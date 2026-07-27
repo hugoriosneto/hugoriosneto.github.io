@@ -7,7 +7,7 @@ const { kicker, sub, moreHref, moreLabel } = Astro.props;
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
     <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}>
-      {moreLabel ?? 'More'} →
+      {moreLabel ?? 'More'} <span aria-hidden="true">→</span>
     </a>
   )}
 </div>

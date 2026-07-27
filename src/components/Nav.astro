@@ -8,13 +8,31 @@ const links = [
   { href: '/cv', label: 'CV', key: 'cv' },
 ];
 ---
-<nav class="sticky top-0 z-10 flex flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3 text-sm
-            border-b border-[var(--hair)] bg-[var(--bg)]/90 backdrop-blur no-print"
+<!-- Opaque, not `bg-[var(--bg)]/90 backdrop-blur`. At 90% the composited background
+     over dark content measures rgb(229,222,195), which drops the `--acc` hover link to
+     3.90:1 — below AA. Task 19's axe gate cannot catch it: axe reads the ancestor's
+     declared background-color, not the composited result, and never evaluates :hover.
+     The blur was measured at a 2.8% mean pixel delta against a hard-edged stripe
+     pattern, i.e. imperceptible over real content, for a permanent compositing layer. -->
+<nav class="sticky top-0 z-10 border-b border-[var(--hair)] bg-[var(--bg)] text-sm no-print"
      aria-label="Primary">
-  <a href="/" class="mr-auto font-semibold tracking-tight text-[var(--ink)] no-underline">Hugo Rios-Neto</a>
-  {links.slice(1).map((l) => (
-    <a href={l.href}
-       class="no-underline text-[var(--dim)] hover:text-[var(--acc)]"
-       aria-current={current === l.key ? 'page' : undefined}>{l.label}</a>
-  ))}
+  <!-- Inner wrapper matches <main>'s mx-auto max-w-4xl so the brand aligns with the h1
+       while the bar itself stays full-bleed.
+
+       Below sm the brand takes a full-width row of its own (`basis-full`) and the four
+       links sit on a second row. This is deliberate, not a wrap accident: brand plus all
+       four labels plus gaps measures ~424px, so one row was never achievable at 375px —
+       an earlier version claimed it was and the brand silently wrapped to three lines at
+       320px, giving an 85px nav. Two tidy left-aligned rows measure ~70px, inside the
+       5rem scroll-padding-top. `whitespace-nowrap` on every item is what stops any label
+       breaking mid-word. -->
+  <div class="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-1 px-6 py-3 sm:flex-nowrap sm:gap-x-6">
+    <a href="/" class="basis-full whitespace-nowrap font-semibold tracking-tight text-[var(--ink)] no-underline sm:mr-auto sm:basis-auto"
+       aria-current={current === 'home' ? 'page' : undefined}>Hugo Rios-Neto</a>
+    {links.slice(1).map((l) => (
+      <a href={l.href}
+         class="whitespace-nowrap text-[13px] text-[var(--dim)] no-underline hover:text-[var(--acc)] sm:text-sm"
+         aria-current={current === l.key ? 'page' : undefined}>{l.label}</a>
+    ))}
+  </div>
 </nav>

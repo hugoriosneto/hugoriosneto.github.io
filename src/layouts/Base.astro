@@ -11,6 +11,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
 const person = {
   '@context': 'https://schema.org',
   '@type': 'Person',
+  // Stable @id so the five per-page copies reconcile to one entity rather than five.
+  '@id': 'https://hugoriosneto.github.io/#person',
   name: 'Hugo Rios-Neto',
   jobTitle: 'Data Recruitment Lead',
   worksFor: { '@type': 'Organization', name: 'RSC Anderlecht' },
@@ -39,7 +41,7 @@ const person = {
     <meta property="og:url" content={canonical} />
     <meta property="og:image" content={new URL('/img/og.png', Astro.site).href} />
     <meta name="twitter:card" content="summary_large_image" />
-    <script type="application/ld+json" set:html={JSON.stringify(person)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(person)} />
   </head>
   <body class="min-h-screen">
     <!-- z-20 puts the skip link above the sticky nav (z-10); without it the first tab
@@ -48,7 +50,8 @@ const person = {
          link scrolls the page but leaves focus in the nav. -->
     <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:m-3 focus:rounded focus:bg-[var(--card)] focus:px-3 focus:py-2">Skip to content</a>
     <Nav current={current} />
-    <TricolourRule />
+    <!-- no-print: otherwise a stray 3px colour bar tops page 1 of the printed CV. -->
+    <TricolourRule class="no-print" />
     <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-6">
       <slot />
     </main>
