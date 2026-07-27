@@ -191,7 +191,7 @@ Expanded rows show full author lists (Hugo bolded), a PDF link where one exists 
 
 Co-supervisors are shown deliberately: Jesse Davis is among the most prominent researchers in the field, and the association is a credential. **No abstract** *(decided)*.
 
-**Service** — Co-organizer, Machine Learning & Data Mining for Sports Analytics, 13th edition, ECML/PKDD, Naples, 7 September 2026, with Pieter Robberechts, Maaike Van Roy and Albrecht Zimmermann. Second year as an organizer.
+**Service** — Co-organizer, Machine Learning & Data Mining for Sports Analytics, 13th edition, ECML/PKDD, Naples, 7 September 2026, with Pieter Robberechts, Maaike Van Roy and Albrecht Zimmermann. Second year as an organizer, following the 12th edition in 2025.
 
 **Writing** — "The Tactical Influence of Analytics in Soccer".
 
@@ -235,7 +235,7 @@ Print-styled. Remit only — no headcount, no reporting lines.
 **Experience** — Anderlecht (01/2026–now) · Orlando City SC (07/2025–12/2025) · Gemini (07/2023–06/2025) · Atlético Mineiro (04/2021–07/2023)
 **Founded** — SALab (2022–now) · FAME (2022–now, five editions)
 **Education** — MSc Computer Science, UFMG, defended 02/2026 · BSc Computational Mathematics, UFMG, 03/2018–08/2022
-**Service & awards** — MLSA co-organizer, 2025 and 2026 (2026 is the workshop's 13th edition) · Opta Pro Forum Algorithm Track winner, 2023
+**Service & awards** — MLSA co-organizer, 12th and 13th editions (2025, 2026) · Opta Pro Forum Algorithm Track winner, 2023
 
 ## 8. Facts of record
 
@@ -249,7 +249,7 @@ Confirmed by Hugo. These override anything in the existing repo.
 | **Atlético Mineiro** | Data Scientist · 04/2021 – 07/2023 — the first analytics department at a Brazilian club, **confirmed as the first** |
 | **SALab** | Co-founder · 2022 – present · UFMG |
 | **FAME** | Co-founder & organizer · 2022 – present · five editions |
-| **MLSA** | Co-organizer, 2nd year · 13th edition · ECML/PKDD, Naples, 7 Sep 2026 |
+| **MLSA** | Co-organizer · 12th edition (2025) and 13th edition (ECML/PKDD, Naples, 7 Sep 2026) |
 | **MSc** | Computer Science, UFMG · defended 02/2026 · *Towards Learning Representations from Spatiotemporal Grids in Soccer* · Meira Jr. (sup.), Davis & Pereira (co-sup.) |
 | **BSc** | Computational Mathematics, UFMG · 03/2018 – 08/2022 |
 
