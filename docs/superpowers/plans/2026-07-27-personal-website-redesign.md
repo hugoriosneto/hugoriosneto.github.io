@@ -732,7 +732,7 @@ Verify the built output has exactly one: `test -f dist/robots.txt && grep -c Liq
 Run: `ls public/assets/pdf src/assets/papers && ls public/img 2>/dev/null; ls src/content 2>/dev/null`
 Expected: 3 PDFs in `public/assets/pdf`, 4 previews in `src/assets/papers`, **no** `public/img` directory, **no** `src/content/writing`. No `example_pdf.pdf`, no `brownian-motion.gif`, no `tactical-*.jpg`, no portrait.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add -A
@@ -1033,7 +1033,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     conference — FAME, now in its fifth edition.
   capabilities:
     - Founded a lasting institution
-    - Ran a 5-edition event
+    - Five editions and counting
     - Sponsors and partners
     - Developed people
 
@@ -1060,8 +1060,8 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   order: 4
   position: 80
   blurb: >-
-    Owned the club's insights and analytics function — the first time the whole
-    thing was mine to shape.
+    Owned the club's insights and analytics function end to end — what got
+    prioritised, what got built, and what the club acted on.
   capabilities:
     - Owned a club function
     - North American market
@@ -1323,12 +1323,37 @@ describe('invariants a per-entry schema cannot express', () => {
     }
   });
 
-  it('FAME editions are contiguous from 1 with exactly one upcoming', () => {
-    // Task 14 indexes a hardcoded 5-element ordinals array; edition 6 would
-    // render "undefined edition".
+  it('FAME editions are contiguous from 1', () => {
     const eds = fame.map((e) => e.edition).sort((a, b) => a - b);
     expect(eds).toEqual(eds.map((_, i) => i + 1));
-    expect(fame.filter((e) => e.status === 'upcoming')).toHaveLength(1);
+  });
+
+  it('at most one upcoming edition, and it has not already happened', () => {
+    // NOT toHaveLength(1): after 28 Sep 2026, flipping '26 to past is the correct
+    // action and would have failed a hard equality — punishing correct maintenance
+    // and leaving "leave the stale badge up" as the only green state.
+    const upcoming = fame.filter((e) => e.status === 'upcoming');
+    expect(upcoming.length).toBeLessThanOrEqual(1);
+    for (const e of upcoming) {
+      expect(new Date(e.date).getTime(), `${e.id} is still marked upcoming but its date has passed`)
+        .toBeGreaterThan(Date.now());
+    }
+  });
+
+  it('every role position still decodes to roughly the right date as "now" advances', () => {
+    // The rail's right edge is "now", so fixed positions rot at about a month of
+    // error per month elapsed. This goes red on its own schedule rather than quietly.
+    const AXIS_START = new Date('2021-01-01').getTime();
+    const span = Date.now() - AXIS_START;
+    const monthsOff = (r: any) => {
+      const implied = AXIS_START + (r.position / 100) * span;
+      const [mm, yyyy] = String(r.dates).slice(0, 7).split('/');
+      const actual = new Date(Number(yyyy), Number(mm) - 1, 1).getTime();
+      return Math.abs(implied - actual) / (1000 * 60 * 60 * 24 * 30.44);
+    };
+    for (const r of roles.filter((x) => /^\d{2}\/\d{4}/.test(x.dates))) {
+      expect(monthsOff(r), `${r.id}'s dot has drifted from its actual start date`).toBeLessThan(9);
+    }
   });
 
   it('every paper pdf resolves to a real file', () => {
@@ -1353,7 +1378,7 @@ describe('invariants a per-entry schema cannot express', () => {
 ```
 
 Run: `npx vitest run tests/unit/content-data.test.ts`
-Expected: `10 passed`.
+Expected: `12 passed`.
 
 - [ ] **Step 8: Commit**
 
@@ -1902,6 +1927,10 @@ const last = data.length - 1;
 
 <script is:inline define:vars={{ data }}>
   (() => {
+    // Content comes from YAML and is interpolated into innerHTML below. Nothing in
+    // the data needs markup, so escape it rather than trusting future entries.
+    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const stops = Array.from(document.querySelectorAll('.traj-stop'));
     const detail = document.querySelector('[data-testid="trajectory-detail"]');
     const chips = document.querySelector('[data-testid="trajectory-chips"]');
@@ -1919,17 +1948,17 @@ const last = data.length - 1;
 
       const r = data[i];
       detail.innerHTML =
-        `<div class="text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]">${r.verb}</div>` +
-        `<div class="text-2xl font-semibold tracking-tight">${r.org}</div>` +
-        `<div class="mb-2 text-sm font-semibold text-[var(--acc)]">${r.title} · ${r.dates}</div>` +
-        `<p class="max-w-[46ch] leading-relaxed text-[var(--dim)]">${r.blurb}</p>`;
+        `<div class="text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]">${esc(r.verb)}</div>` +
+        `<div class="text-2xl font-semibold tracking-tight">${esc(r.org)}</div>` +
+        `<div class="mb-2 text-sm font-semibold text-[var(--acc)]">${esc(r.title)} · ${esc(r.dates)}</div>` +
+        `<p class="max-w-[46ch] leading-relaxed text-[var(--dim)]">${esc(r.blurb)}</p>`;
 
       chips.innerHTML = data.slice(0, i + 1).flatMap((role, k) =>
         role.capabilities.map((c) => {
           const fresh = k === i
             ? 'border-[var(--acc)] text-[var(--acc)] font-semibold'
             : 'border-[var(--cardline)] text-[var(--dim)]';
-          return `<li class="rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs ${fresh}">${c}</li>`;
+          return `<li class="rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs ${fresh}">${esc(c)}</li>`;
         })
       ).join('');
     }
@@ -2189,6 +2218,9 @@ test('every paper shows a square preview thumbnail at a uniform size', async ({ 
   await page.goto('/research');
   const thumbs = page.getByTestId('paper-preview');
   await expect(thumbs).toHaveCount(4);
+  // Hidden below sm: at 375px the row spends 155px on year + thumb + gaps, leaving
+  // 172px for titles that then run to five or six ragged lines.
+  if ((page.viewportSize()?.width ?? 0) < 640) return;
   // Sources range from 840x840 to 246x246 with mismatched aspect ratios, so the point
   // of the crop is that every rendered box is identical regardless.
   const boxes = await thumbs.evaluateAll((els) =>
@@ -2242,7 +2274,7 @@ const preview = previews[`/src/assets/papers/${id}.png`]?.default;
       {preview && (
         <Image src={preview} alt="" width={160} loading="lazy"
                data-testid="paper-preview"
-               class="h-14 w-14 shrink-0 self-center rounded-lg border border-[var(--cardline)] object-cover" />
+               class="hidden h-14 w-14 shrink-0 self-center rounded-lg border border-[var(--cardline)] object-cover sm:block" />
       )}
       <span>
         <span class="text-[0.9rem] font-medium leading-snug group-hover:text-[var(--acc)]">{paper.title}</span>
@@ -2357,9 +2389,10 @@ test('offers all five editions as tabs', async ({ page }) => {
   await expect(page.getByRole('tab')).toHaveCount(5);
 });
 
-test('opens on the most recent edition', async ({ page }) => {
+test('opens on the most recent edition that has actually happened', async ({ page }) => {
   await page.goto('/salab-fame');
-  await expect(page.getByTestId('fame-panel')).toContainText('28 September 2026');
+  // Not the last tab — that is the upcoming one, whose panel is nearly empty.
+  await expect(page.getByTestId('fame-panel')).toContainText('3 September 2025');
 });
 
 test('switching edition swaps the panel', async ({ page }) => {
@@ -2406,15 +2439,15 @@ Expected: FAIL — `/salab-fame` 404s.
 import { getCollection } from 'astro:content';
 const editions = (await getCollection('fame')).sort((a, b) => a.data.edition - b.data.edition);
 const data = editions.map((e) => e.data);
-const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
+const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${n}th`;
 ---
 <div>
   <div role="tablist" aria-label="FAME editions" class="mb-5 flex flex-wrap gap-1.5">
     {data.map((e, i) => (
       <button type="button" role="tab" id={`fame-tab-${i}`}
               aria-controls="fame-panel"
-              aria-selected={i === data.length - 1 ? 'true' : 'false'}
-              tabindex={i === data.length - 1 ? 0 : -1}
+              aria-selected={e.status === 'past' && i === data.map((x) => x.status).lastIndexOf('past') ? 'true' : 'false'}
+              tabindex={e.status === 'past' && i === data.map((x) => x.status).lastIndexOf('past') ? 0 : -1}
               data-index={i}
               class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]">
         {e.year}
@@ -2424,8 +2457,10 @@ const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
   <div id="fame-panel" role="tabpanel" data-testid="fame-panel" class="min-h-[8rem]"></div>
 </div>
 
-<script is:inline define:vars={{ data, ordinals }}>
+<script is:inline define:vars={{ data, ordinals: data.map((e) => ordinal(e.edition)), defaultIndex: Math.max(0, data.map((e) => e.status).lastIndexOf('past')) }}>
   (() => {
+    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const tabs = Array.from(document.querySelectorAll('.fame-tab'));
     const panel = document.getElementById('fame-panel');
     if (!tabs.length || !panel) return;
@@ -2449,15 +2484,15 @@ const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
         ? '<span class="ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">Upcoming</span>'
         : '';
       const sponsors = e.sponsors && e.sponsors.length
-        ? `<p data-testid="fame-sponsors" class="mt-3 text-xs text-[var(--faint)]">Sponsored by ${e.sponsors.join(' and ')}</p>`
+        ? `<p data-testid="fame-sponsors" class="mt-3 text-xs text-[var(--faint)]">Sponsored by ${e.sponsors.map(esc).join(' and ')}</p>`
         : '';
       const body = e.detail
-        ? `<p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">${e.detail}</p>`
-        : `<p class="max-w-[58ch] leading-relaxed text-[var(--faint)]">${e.note || ''}</p>`;
+        ? `<p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">${esc(e.detail)}</p>`
+        : `<p class="max-w-[58ch] leading-relaxed text-[var(--faint)]">${esc(e.note || '')}</p>`;
 
       panel.innerHTML =
-        `<div class="text-lg font-semibold tracking-tight">FAME '${String(e.year).slice(2)} — ${ordinals[e.edition - 1]} edition${badge}</div>` +
-        `<div class="mb-2.5 text-xs text-[var(--faint)]">${e.date} · ${e.venue}</div>` +
+        `<div class="text-lg font-semibold tracking-tight">FAME '${String(e.year).slice(2)} — ${ordinals[i]} edition${badge}</div>` +
+        `<div class="mb-2.5 text-xs text-[var(--faint)]">${esc(e.date)} · ${esc(e.venue)}</div>` +
         body + sponsors;
     }
 
@@ -2472,7 +2507,10 @@ const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
       });
     });
 
-    select(tabs.length - 1);
+    // The most recent PAST edition, not the last tab. Opening on the upcoming one
+    // shows a title, a date and 26 characters of "Programme to be announced." — the
+    // single emptiest panel on the site, where spec §6 wants the growth argument.
+    select(defaultIndex);
   })();
 </script>
 ```
@@ -2639,6 +2677,9 @@ const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.dat
       iframe.height = '100%';
       iframe.loading = 'lazy';
       iframe.setAttribute('allowfullscreen', '');
+      // Spotify needs encrypted-media or playback fails in Chrome; its own embed
+      // snippet ships this list.
+      iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture');
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
       iframe.style.border = '0';
       frame.replaceChildren(iframe);
@@ -3228,7 +3269,11 @@ Expected: five `ok` lines for the pages, plus `ok  no /writing route`. No `MISSI
 Run: `npx playwright test tests/e2e/talks.spec.ts -g "third-party" --project=desktop`
 Expected: PASS.
 
-- [ ] **Step 4: Confirm `.nojekyll` is protecting something real**
+- [ ] **Step 4: Click through all six talk embeds by hand**
+
+No test in this plan verifies an embed actually resolves — Task 15 only asserts the iframe's host matches its declared provider. A dead YouTube id or a Spotify episode that needs `encrypted-media` would pass every gate and fail for every visitor. Open `/talks`, click all six, confirm each loads and plays.
+
+- [ ] **Step 5: Confirm `.nojekyll` is protecting something real**
 
 When it was added in Task 5, `dist/_astro/` did not yet exist — no page imported `global.css` until Task 9's layout landed. Now it does, so this is finally checkable:
 
@@ -3241,7 +3286,7 @@ ls dist/_astro/*.woff2 >/dev/null 2>&1 && echo "ok  fonts in _astro" || echo "PR
 
 All three must print `ok`. Without the dotfile, GitHub Pages would drop everything the second and third lines just found.
 
-- [ ] **Step 5: Clear the remaining al-folio residue outside `dist`**
+- [ ] **Step 6: Clear the remaining al-folio residue outside `dist`**
 
 Spec §1 opens by complaining about template residue on a public repo, and Step 1's grep only inspects `dist`, so none of this would surface:
 
@@ -3249,11 +3294,11 @@ Spec §1 opens by complaining about template residue on a public repo, and Step 
 - `.github/ISSUE_TEMPLATE/bug_report.md` and `feature_request.md` are al-folio's. Delete both.
 - `.idea/SALabUFMG.github.io.iml` is tracked and names the wrong project. Delete the tracked `.idea` files.
 
-- [ ] **Step 6: Drop the Jekyll entries still in `.gitignore`**
+- [ ] **Step 7: Drop the Jekyll entries still in `.gitignore`**
 
 Nine lines survive from the old toolchain and now ignore nothing: `_site`, `.bundle`, `.sass-cache`, `.jekyll-cache`, `.jekyll-metadata`, `.ruby-version`, `.tweet-cache`, `Gemfile.lock`, `vendor`. Remove them; keep `.DS_store`, `.superpowers/` and everything Task 1 added.
 
-- [ ] **Step 7: Update the README**
+- [ ] **Step 8: Update the README**
 
 Replace `README.md` with:
 ```markdown
@@ -3279,7 +3324,7 @@ Adding a paper, talk or FAME edition means adding a YAML entry — no template c
 Design decisions and their reasoning: `docs/superpowers/specs/2026-07-27-personal-website-redesign-design.md`
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add -A
