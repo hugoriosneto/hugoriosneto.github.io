@@ -690,14 +690,23 @@ for n in 0 1 2 3 4 5; do git mv "assets/img/blog/footure_1_$n.jpg" "public/img/w
 git rm -r --quiet assets
 ```
 
-- [ ] **Step 5: Create `public/robots.txt`**
+- [ ] **Step 5: Replace the Jekyll `robots.txt`**
 
+The old one survives at the repo root — it was not in Task 4's delete list. It is a Jekyll template, complete with Liquid frontmatter and a `{{ site.baseurl }}` interpolation that nothing will ever resolve, and it points at `sitemap.xml` where Astro emits `sitemap-index.xml`. Delete it, then create the real one under `public/`.
+
+```bash
+git rm --quiet robots.txt
+```
+
+`public/robots.txt`:
 ```
 User-agent: *
 Allow: /
 
 Sitemap: https://hugoriosneto.github.io/sitemap-index.xml
 ```
+
+Verify the built output has exactly one: `test -f dist/robots.txt && grep -c Liquid dist/robots.txt; grep sitemap dist/robots.txt` — must show the `sitemap-index.xml` URL and no Liquid syntax.
 
 - [ ] **Step 6: Verify the kept files are all present**
 
