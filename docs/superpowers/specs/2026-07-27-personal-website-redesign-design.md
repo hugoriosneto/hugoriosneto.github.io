@@ -136,15 +136,17 @@ Level **B + C**: one signature moment, plus a page-appropriate interaction every
 
 Five stops across 2021–2026. Clicking a stop shows that role's detail; **capabilities accumulate below and stay visible**, so by the final stop the reader sees the full set at once. A `▶ play` control walks through all five.
 
+**Every chip must say something the org name beside it does not.** "European first division" next to "RSC Anderlecht" in 24px type adds nothing, and padding the accumulation is the fastest way to lose a sceptical reader — the same reflex Rule 1 exists to avoid. Chips also carry the director signal, so they are phrased at full volume: "in the room on squad-building", not "squad-building input".
+
 A timeline that simply *ascends* was designed and rejected: Orlando City was a broader remit at a smaller club and Anderlecht a narrower remit at a bigger one, so a rising line would fake a ladder that does not exist. Cumulative breadth is the thing that honestly only ever increases.
 
 | Stop | Verb | Capabilities added |
 |---|---|---|
-| Atlético Mineiro | Built | Built a department from zero · Inside a top-flight club · Working to coaching staff |
-| SALab & FAME | Founded | Founded a lasting institution · Ran a 5-edition event · Sponsors and partners · Developed people |
-| Gemini | Scaled | Worked across many clubs · Research → shipped product · Facing club decision-makers |
-| Orlando City SC | Owned | Owned a club function · North American market |
-| RSC Anderlecht | Leads | Recruitment decision-making · European first division · Squad-building input |
+| Atlético Mineiro | Built | Built a department from zero · Working to coaching staff |
+| SALab & FAME | Founded | Founded a lasting institution · Five editions and counting · Brought sponsors and partners · Put people into the industry |
+| Gemini | Scaled | Worked across many clubs · Research → shipped product · Trusted by club decision-makers |
+| Orlando City SC | Owned | Owned a club function |
+| RSC Anderlecht | Leads | Recruitment decision-making · In the room on squad-building |
 
 ### Per-page interactions
 
