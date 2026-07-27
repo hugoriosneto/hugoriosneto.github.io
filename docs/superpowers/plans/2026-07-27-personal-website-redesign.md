@@ -1602,11 +1602,17 @@ const links = [
 <nav class="sticky top-0 z-10 border-b border-[var(--hair)] bg-[var(--bg)] text-sm no-print"
      aria-label="Primary">
   <!-- Inner wrapper matches <main>'s mx-auto max-w-4xl so the brand aligns with the h1
-       while the bar itself stays full-bleed. Tighter gaps below sm keep all six items on
-       one row at 375px; unconstrained they wrap to two, costing 28px of sticky height on
-       every page and overrunning global.css's scroll-padding-top. -->
-  <div class="mx-auto flex max-w-4xl items-center gap-x-4 px-6 py-3 sm:gap-x-6">
-    <a href="/" class="mr-auto font-semibold tracking-tight text-[var(--ink)] no-underline"
+       while the bar itself stays full-bleed.
+
+       Below sm the brand takes a full-width row of its own (`basis-full`) and the four
+       links sit on a second row. This is deliberate, not a wrap accident: brand plus all
+       four labels plus gaps measures ~424px, so one row was never achievable at 375px —
+       an earlier version claimed it was and the brand silently wrapped to three lines at
+       320px, giving an 85px nav. Two tidy left-aligned rows measure ~70px, inside the
+       5rem scroll-padding-top. `whitespace-nowrap` on every item is what stops any label
+       breaking mid-word. -->
+  <div class="mx-auto flex max-w-4xl flex-wrap items-center gap-x-4 gap-y-1 px-6 py-3 sm:flex-nowrap sm:gap-x-6">
+    <a href="/" class="basis-full whitespace-nowrap font-semibold tracking-tight text-[var(--ink)] no-underline sm:mr-auto sm:basis-auto"
        aria-current={current === 'home' ? 'page' : undefined}>Hugo Rios-Neto</a>
     {links.slice(1).map((l) => (
       <a href={l.href}
@@ -1758,13 +1764,26 @@ test('nav exposes all five pages and marks the current one', async ({ page }) =>
   await expect(nav.getByRole('link', { name: 'Hugo Rios-Neto' })).toHaveAttribute('aria-current', 'page');
 });
 
-test('the nav stays on one row down to 320px', async ({ page }) => {
-  // Wrapping costs 28px of sticky height on every page and overruns
-  // global.css's scroll-padding-top, landing anchors under the nav.
-  await page.setViewportSize({ width: 320, height: 800 });
+test('the nav is one row on desktop and two tidy rows on mobile', async ({ page }) => {
+  const nav = page.getByRole('navigation', { name: 'Primary' });
+
+  await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/');
-  const h = await page.getByRole('navigation', { name: 'Primary' }).evaluate((n) => n.getBoundingClientRect().height);
-  expect(h).toBeLessThan(60);
+  expect(await nav.evaluate((n) => n.getBoundingClientRect().height)).toBeLessThan(60);
+
+  // Brand plus four labels plus gaps is ~424px, so one row is impossible on a phone.
+  // Two rows is the design; what must not happen is a label breaking mid-word or the
+  // nav growing past global.css's 5rem scroll-padding-top and hiding anchor targets.
+  for (const width of [320, 375]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/');
+    const h = await nav.evaluate((n) => n.getBoundingClientRect().height);
+    expect(h, `nav is ${h}px at ${width}px — taller than scroll-padding-top`).toBeLessThan(80);
+    // No item may wrap internally: each link's height stays within one line-box.
+    const tallest = await nav.locator('a').evaluateAll((as) =>
+      Math.max(...as.map((a) => a.getBoundingClientRect().height)));
+    expect(tallest, `a nav label wrapped onto a second line at ${width}px`).toBeLessThan(28);
+  }
 });
 
 test('footer shows social links and no email address', async ({ page }) => {
