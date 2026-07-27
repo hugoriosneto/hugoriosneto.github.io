@@ -38,7 +38,7 @@
 | `src/components/PaperRow.astro` | `<details>`, no JS |
 | `src/pages/*.astro` | The five pages and `404` |
 | `public/` | Migrated PDFs, images, favicon, robots.txt |
-| `tests/unit/*.test.ts` | Vitest |
+| `tests/unit/*.test.ts` | Vitest — contrast, tokens, schemas, cross-entry content invariants, BibTeX |
 | `tests/e2e/*.spec.ts` | Playwright |
 
 ---
@@ -757,7 +757,7 @@ import { roleSchema, paperSchema, talkSchema, fameSchema } from '../../src/lib/s
 
 describe('roleSchema', () => {
   const valid = {
-    id: 'anderlecht', org: 'RSC Anderlecht', title: 'Data Recruitment Lead',
+    org: 'RSC Anderlecht', title: 'Data Recruitment Lead',
     dates: '01/2026 – now', verb: 'Leads', order: 5, position: 93,
     blurb: 'Recruitment analytics.', capabilities: ['Recruitment decision-making'],
   };
@@ -778,11 +778,23 @@ describe('roleSchema', () => {
     expect(() => roleSchema.parse({ ...valid, blurb: 'A team of one.' })).toThrow();
     expect(() => roleSchema.parse({ ...valid, blurb: 'Reports to the director of scouting.' })).toThrow();
   });
+
+  it('rejects the same phrases in a capability chip, not just the blurb', () => {
+    // The chips are the other surface where role copy reaches the page, and the
+    // trajectory e2e only reads the detail panel — so nothing else covers them.
+    expect(() => roleSchema.parse({ ...valid, capabilities: ['Reporting to a football director'] })).toThrow();
+    expect(() => roleSchema.parse({ ...valid, capabilities: ['Owned a club function', 'A team of three'] })).toThrow();
+  });
+
+  it('rejects a position that would clip at the rail edge', () => {
+    expect(() => roleSchema.parse({ ...valid, position: 0 })).toThrow();
+    expect(() => roleSchema.parse({ ...valid, position: 100 })).toThrow();
+  });
 });
 
 describe('paperSchema', () => {
   const valid = {
-    id: 'graphepv', title: 'GraphEPV', year: 2024, venue: 'MLSA @ ECML/PKDD',
+    title: 'GraphEPV', year: 2024, venue: 'MLSA @ ECML/PKDD',
     authors: ['Bruno M. Sá-Freire', 'Hugo Rios-Neto'], bibtexKey: 'safreire2024graphepv',
     bibtexType: 'inproceedings',
   };
@@ -802,7 +814,7 @@ describe('paperSchema', () => {
 
 describe('talkSchema', () => {
   const valid = {
-    id: 'opta', title: 'Opta Pro Forum', description: 'Algorithm Track.',
+    title: 'Opta Pro Forum', description: 'Algorithm Track.',
     provider: 'vimeo', embedUrl: 'https://player.vimeo.com/video/819432708',
     language: 'EN', format: 'Conference', order: 1,
   };
@@ -818,11 +830,18 @@ describe('talkSchema', () => {
   it('rejects a non-https embed', () => {
     expect(() => talkSchema.parse({ ...valid, embedUrl: 'http://insecure.test/x' })).toThrow();
   });
+
+  it('rejects an embed whose host does not match its provider', () => {
+    // This value goes straight into iframe.src. Task 15's "no third-party requests"
+    // test only observes before the click, so it cannot see a mismatched host.
+    expect(() => talkSchema.parse({ ...valid, provider: 'youtube' })).toThrow();
+    expect(() => talkSchema.parse({ ...valid, embedUrl: 'https://evil.test/embed' })).toThrow();
+  });
 });
 
 describe('fameSchema', () => {
   const valid = {
-    id: 'fame22', edition: 1, year: 2022, date: '21 October 2022',
+    edition: 1, year: 2022, date: '21 October 2022',
     venue: 'CAD3, UFMG Pampulha', status: 'past',
     detail: 'The first football analytics event held in Brazil.', sponsors: [],
   };
@@ -831,12 +850,16 @@ describe('fameSchema', () => {
     expect(() => fameSchema.parse(valid)).not.toThrow();
   });
 
-  it('allows an upcoming edition with no detail', () => {
-    expect(() => fameSchema.parse({ ...valid, status: 'upcoming', detail: undefined })).not.toThrow();
+  it('allows an upcoming edition with a note instead of detail', () => {
+    expect(() => fameSchema.parse({ ...valid, status: 'upcoming', detail: undefined, note: 'Programme to be announced.' })).not.toThrow();
   });
 
   it('requires detail on a past edition', () => {
     expect(() => fameSchema.parse({ ...valid, status: 'past', detail: undefined })).toThrow();
+  });
+
+  it('requires a note on an upcoming edition, or the panel renders blank', () => {
+    expect(() => fameSchema.parse({ ...valid, status: 'upcoming', detail: undefined, note: undefined })).toThrow();
   });
 });
 ```
@@ -853,27 +876,36 @@ The `blurb` refinement is what mechanically enforces the spec's "remit, never he
 ```ts
 import { z } from 'astro/zod';
 
-const BANNED_IN_BLURB = /\b(team of \w+|reports? to|reported to|reporting to|headcount|direct reports?)\b/i;
+/* Applied to BOTH `blurb` and every `capabilities` entry. Spec §3 forbids reporting
+   lines and headcount on a role, not merely in one field — and the chips are the other
+   surface where role copy reaches the page. Guarding only the blurb left the chips with
+   no enforcement at any layer: Task 11's e2e reads the detail panel, and the CV never
+   renders capabilities at all. */
+const BANNED_PHRASE = /\b(team of \w+|reports? to|reported to|reporting to|headcount|direct reports?)\b/i;
 
-// NOTE: `id` is optional in every schema below. The `file()` loader consumes the YAML
-// `id` key to build the entry ID and may not pass it through to `data`; making it
-// required would break the build depending on loader version.
+/* No `id` field. The `file()` loader sets `entry.id` from the YAML `id` key regardless
+   of the schema, and nothing reads `entry.data.id` — Task 13 keys previews off
+   `entry.id`, Task 17 filters on `entry.id`. Declaring it would only duplicate a value
+   that already exists one level up. */
 export const roleSchema = z.object({
-  id: z.string().optional(),
   org: z.string(),
   title: z.string(),
   dates: z.string(),
   verb: z.string(),
   order: z.number().int().min(1),
-  position: z.number().min(0).max(100),
-  blurb: z.string().min(1).refine((s) => !BANNED_IN_BLURB.test(s), {
+  // 0 and 100 clip: dots carry -ml-2.5 inside a left-2 right-2 rail.
+  position: z.number().min(2).max(98),
+  blurb: z.string().min(1).refine((s) => !BANNED_PHRASE.test(s), {
     message: 'Role blurbs must state remit only — no headcount and no reporting lines (spec §3).',
   }),
-  capabilities: z.array(z.string()).min(1),
+  capabilities: z.array(
+    z.string().refine((s) => !BANNED_PHRASE.test(s), {
+      message: 'Capability chips must state remit only — no headcount and no reporting lines (spec §3).',
+    }),
+  ).min(1),
 });
 
 export const paperSchema = z.object({
-  id: z.string().optional(),
   title: z.string(),
   year: z.number().int().min(1990).max(2100),
   venue: z.string(),
@@ -889,22 +921,26 @@ export const paperSchema = z.object({
   publisher: z.string().optional(),
 });
 
+const EMBED_HOSTS = { youtube: 'www.youtube.com', vimeo: 'player.vimeo.com', spotify: 'open.spotify.com' };
+
 export const talkSchema = z.object({
-  id: z.string().optional(),
   title: z.string(),
   description: z.string(),
   provider: z.enum(['youtube', 'vimeo', 'spotify']),
   embedUrl: z.string().url().startsWith('https://'),
-  date: z.string().optional(),
   language: z.enum(['EN', 'PT']),
   format: z.enum(['Conference', 'Podcast', 'Webinar', 'Live']),
   award: z.string().optional(),
-  role: z.string().optional(),
+  // Not `role` — `roles` is the career collection and `role` is also the ARIA
+  // attribute used throughout the adjacent components. This is a billing credit.
+  credit: z.string().optional(),
   order: z.number().int(),
+}).refine((t) => EMBED_HOSTS[t.provider] === new URL(t.embedUrl).host, {
+  message: 'embedUrl host must match provider — this value goes straight into iframe.src.',
+  path: ['embedUrl'],
 });
 
 export const fameSchema = z.object({
-  id: z.string().optional(),
   edition: z.number().int().min(1),
   year: z.number().int(),
   date: z.string(),
@@ -913,8 +949,8 @@ export const fameSchema = z.object({
   detail: z.string().optional(),
   sponsors: z.array(z.string()).default([]),
   note: z.string().optional(),
-}).refine((e) => e.status === 'upcoming' || (e.detail && e.detail.length > 0), {
-  message: 'A past FAME edition must have detail.',
+}).refine((e) => (e.status === 'past' ? !!e.detail : !!e.note), {
+  message: 'A past FAME edition needs `detail`; an upcoming one needs `note`. Otherwise the panel renders blank.',
   path: ['detail'],
 });
 
@@ -923,7 +959,7 @@ export const fameSchema = z.object({
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/content-schema.test.ts`
-Expected: `13 passed`.
+Expected: `18 passed`.
 
 - [ ] **Step 5: Wire the collections in `src/content.config.ts`**
 
@@ -1113,7 +1149,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Stats Perform, March 2023, with Maaike Van Roy, Wagner Meira Jr. and Jesse Davis.
   provider: vimeo
   embedUrl: https://player.vimeo.com/video/819432708?h=1ac4fd9fb4&title=0&byline=0&portrait=0
-  date: 2023-03
   language: EN
   format: Conference
   award: Winner
@@ -1126,7 +1161,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   embedUrl: https://www.youtube.com/embed/videoseries?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
   language: PT
   format: Podcast
-  role: Host
+  credit: Host
   order: 2
 
 - id: winning-with-data
@@ -1134,10 +1169,9 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Co-host of the February 2024 episode, with Jesse Davis as the guest.
   provider: spotify
   embedUrl: https://open.spotify.com/embed/episode/5XGkEVHPcN7hxFQZiwrZeE?si=404dbca0dadd4b65
-  date: 2024-02
   language: EN
   format: Podcast
-  role: Co-host
+  credit: Co-host
   order: 3
 
 - id: barca-innovation-hub
@@ -1145,7 +1179,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: FC Barcelona, June 2021 — opening a webinar series promoting the 2021 Sports Tomorrow Congress.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/JC38450JDlc
-  date: 2021-06
   language: EN
   format: Webinar
   order: 4
@@ -1155,7 +1188,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Invited to a Footstats YouTube live, March 2022.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/BtLmS6IDsHk
-  date: 2022-03
   language: PT
   format: Live
   order: 5
@@ -1165,7 +1197,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: FC Barcelona, November 2020 — presenting the off-ball scoring opportunity work.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/MyqzmCHs_iw
-  date: 2020-11
   language: EN
   format: Conference
   order: 6
@@ -1250,10 +1281,82 @@ cp /tmp/roles.bak src/content/roles.yaml && rm -f src/content/roles.yaml.tmp
 ```
 Expected: the build **fails** with a content-collection error naming `blurb` and "remit only", and prints `exit=1`. After restoring, `npm run build` succeeds again.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 7: Add the cross-entry invariants test**
+
+A `file()` loader validates each array element in isolation, so a per-entry schema structurally cannot express anything about the set. That leaves six ways to ship a broken site at exit 0 — most seriously, `position` decoupling from `order`, which makes the trajectory's progress bar run *backwards* on ArrowRight, breaking the site's signature interaction with no error anywhere.
+
+Add `"yaml": "^2.7.0"` to `devDependencies` and run `npm install`. It is already present as an Astro transitive dependency, but relying on hoisting is fragile.
+
+`tests/unit/content-data.test.ts`:
+```ts
+import { describe, it, expect } from 'vitest';
+import { readFileSync, existsSync } from 'node:fs';
+import { parse } from 'yaml';
+
+const load = (name: string): any[] =>
+  parse(readFileSync(new URL(`../../src/content/${name}.yaml`, import.meta.url), 'utf8'));
+
+const roles = load('roles'), papers = load('papers'), talks = load('talks'), fame = load('fame');
+const unique = (xs: unknown[]) => new Set(xs).size === xs.length;
+
+describe('invariants a per-entry schema cannot express', () => {
+  it.each([['roles', roles], ['papers', papers], ['talks', talks], ['fame', fame]] as const)(
+    '%s is non-empty with unique ids', (_name, rows) => {
+      // A duplicate id is only a [WARN] at exit 0 — the later entry silently
+      // overwrites the earlier one and the collection quietly shrinks.
+      expect(rows.length).toBeGreaterThan(0);
+      expect(unique(rows.map((r: any) => r.id))).toBe(true);
+    });
+
+  it('role order values are unique and contiguous from 1', () => {
+    const orders = roles.map((r) => r.order).sort((a, b) => a - b);
+    expect(orders).toEqual(orders.map((_, i) => i + 1));
+  });
+
+  it('role position increases with order — otherwise the trajectory bar runs backwards', () => {
+    const byOrder = [...roles].sort((a, b) => a.order - b.order);
+    for (let i = 1; i < byOrder.length; i++) {
+      expect(byOrder[i].position, `${byOrder[i].id} must sit right of ${byOrder[i - 1].id}`)
+        .toBeGreaterThan(byOrder[i - 1].position);
+    }
+  });
+
+  it('FAME editions are contiguous from 1 with exactly one upcoming', () => {
+    // Task 14 indexes a hardcoded 5-element ordinals array; edition 6 would
+    // render "undefined edition".
+    const eds = fame.map((e) => e.edition).sort((a, b) => a - b);
+    expect(eds).toEqual(eds.map((_, i) => i + 1));
+    expect(fame.filter((e) => e.status === 'upcoming')).toHaveLength(1);
+  });
+
+  it('every paper pdf resolves to a real file', () => {
+    for (const p of papers.filter((x) => x.pdf)) {
+      expect(existsSync(new URL(`../../public${p.pdf}`, import.meta.url)),
+        `${p.pdf} is missing from public/`).toBe(true);
+    }
+  });
+
+  it('every paper has a matching preview image', () => {
+    for (const p of papers) {
+      expect(existsSync(new URL(`../../src/assets/papers/${p.id}.png`, import.meta.url)),
+        `no preview for ${p.id} — Task 13 looks it up by id and fails silently`).toBe(true);
+    }
+  });
+
+  it('talk order values are unique and exactly one talk carries an award', () => {
+    expect(unique(talks.map((t) => t.order))).toBe(true);
+    expect(talks.filter((t) => t.award)).toHaveLength(1);
+  });
+});
+```
+
+Run: `npx vitest run tests/unit/content-data.test.ts`
+Expected: `10 passed`.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/content/
+git add src/content/ tests/unit/content-data.test.ts package.json package-lock.json
 git commit -m "content: add roles, papers, talks and FAME editions"
 ```
 
@@ -1723,12 +1826,15 @@ test('selecting a stop updates the detail panel', async ({ page }) => {
   await expect(detail).toContainText('Owned');
 });
 
-test('never shows headcount or reporting lines', async ({ page }) => {
+test('never shows headcount or reporting lines, in the detail OR the chips', async ({ page }) => {
   await page.goto('/');
   for (const org of ['Atlético Mineiro', 'Gemini Sports Analytics', 'Orlando City SC', 'RSC Anderlecht']) {
     await page.getByRole('button', { name: new RegExp(org) }).click();
-    const text = await page.getByTestId('trajectory-detail').innerText();
-    expect(text).not.toMatch(/team of|reports? to|reported to/i);
+    // Both surfaces — an earlier version read only the detail panel, which left the
+    // accumulated capability chips with no coverage at any layer.
+    const detail = await page.getByTestId('trajectory-detail').innerText();
+    const chips = await page.getByTestId('trajectory-chips').innerText();
+    expect(detail + '\n' + chips).not.toMatch(/team of|reports? to|reported to|headcount/i);
   }
 });
 
@@ -2489,7 +2595,7 @@ const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62r
       {talk.award && <span class="rounded-full border border-[#d9bb45] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[#7a5f00]">{talk.award}</span>}
       <span class={tag}>{talk.language}</span>
       <span class={tag}>{talk.format}</span>
-      {talk.role && <span class={tag}>{talk.role}</span>}
+      {talk.credit && <span class={tag}>{talk.credit}</span>}
     </div>
   </div>
 </article>
@@ -2623,6 +2729,14 @@ test('the printed CV carries the name and contact details', async ({ page }) => 
   await expect(header).toBeHidden();
 });
 
+test('SALab appears under Founded, never under Experience', async ({ page }) => {
+  await page.goto('/cv');
+  // cv.astro filters Experience with a bare `r.id !== 'salab-fame'` string literal.
+  // Rename that id in roles.yaml and SALab silently appears twice.
+  await expect(page.getByTestId('cv-experience')).not.toContainText('SALab');
+  await expect(page.getByTestId('cv-founded')).toContainText('SALab');
+});
+
 test('contains no trace of the old Einstein template', async ({ page }) => {
   await page.goto('/cv');
   const text = await page.locator('body').innerText();
@@ -2694,6 +2808,7 @@ const service = [
     </div>
 
     <SectionHead kicker="Experience" />
+    <div data-testid="cv-experience">
     {roles.map((r) => (
       <div class="avoid-break grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
         <div class="text-sm tabular-nums text-[var(--faint)]">{r.data.dates}</div>
@@ -2704,9 +2819,10 @@ const service = [
         </div>
       </div>
     ))}
+    </div>
 
-    {[['Founded', founded], ['Education', education], ['Service & awards', service]].map(([kicker, rows]: any) => (
-      <div class="mt-10">
+    {[['Founded', founded, 'cv-founded'], ['Education', education, 'cv-education'], ['Service & awards', service, 'cv-service']].map(([kicker, rows, tid]: any) => (
+      <div class="mt-10" data-testid={tid}>
         <SectionHead kicker={kicker} />
         {rows.map((row: any) => (
           <div class="avoid-break grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
@@ -2731,7 +2847,7 @@ const service = [
 - [ ] **Step 4: Run the test**
 
 Run: `npx playwright test tests/e2e/cv.spec.ts --project=desktop`
-Expected: `6 passed` — the fifth is the print-header check added after review found ⌘P produced an anonymous CV.
+Expected: `7 passed` — including the print-header check and the SALab-placement check, both added after review.
 
 - [ ] **Step 5: Commit**
 
