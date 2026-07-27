@@ -4,9 +4,9 @@
 
 **Goal:** Replace the stale al-folio Jekyll fork at `hugoriosneto.github.io` with a five-page Astro site built for a football-industry reader, per `docs/superpowers/specs/2026-07-27-personal-website-redesign-design.md`.
 
-**Architecture:** Static Astro site. All content lives in schema-validated content collections (YAML for structured data, MDX for the two long-form posts), so a malformed entry fails the build rather than rendering wrong. Interactivity is three small vanilla `<script>` blocks scoped to their `.astro` components — **no UI framework at all** — plus native `<details>` for expandable rows. Colour lives entirely in CSS custom properties on `:root`, so the deferred dark theme is a variables block rather than a refactor. Deployment keeps the existing `gh-pages`-branch mechanism so no GitHub repo settings need changing.
+**Architecture:** Static Astro site. All content lives in schema-validated YAML content collections, so a malformed entry fails the build rather than rendering wrong. Interactivity is three small vanilla `<script>` blocks scoped to their `.astro` components — **no UI framework at all** — plus native `<details>` for expandable rows. Colour lives entirely in CSS custom properties on `:root`, so the deferred dark theme is a variables block rather than a refactor. Deployment keeps the existing `gh-pages`-branch mechanism so no GitHub repo settings need changing.
 
-**Tech Stack:** Astro 5 · Tailwind CSS 4 (via `@tailwindcss/vite`) · MDX · Vitest (unit) · Playwright + axe-core (behaviour + a11y) · `@fontsource-variable` self-hosted fonts · GitHub Actions
+**Tech Stack:** Astro 5 · Tailwind CSS 4 (via `@tailwindcss/vite`) · Vitest (unit) · Playwright + axe-core (behaviour + a11y) · `@fontsource-variable` self-hosted fonts · GitHub Actions
 
 **Branch note:** All work happens on `claude/personal-website-redesign-1ead09`. The deploy workflow only publishes on push to `master`/`main`, so the live site stays on the old Jekyll build until this branch is merged. Tasks 3 and 4 delete the Jekyll site — that is safe on this branch and only on this branch.
 
@@ -25,9 +25,9 @@
 | `src/content.config.ts` | Five collections + zod schemas |
 | `src/content/roles.yaml` | Career trajectory stops |
 | `src/content/papers.yaml` | Four papers |
+| `src/assets/papers/*.png` | Four paper previews, cropped square via `astro:assets` |
 | `src/content/talks.yaml` | Six talks |
 | `src/content/fame.yaml` | Five FAME editions |
-| `src/content/writing/*.mdx` | The two migrated posts |
 | `src/layouts/Base.astro` | `<head>`, SEO, schema.org, nav + footer wrapper |
 | `src/components/Nav.astro`, `Footer.astro`, `TricolourRule.astro`, `SectionHead.astro` | Chrome |
 | `src/components/Hero.astro` | The three "firsts" + framing + identity block |
@@ -35,8 +35,7 @@
 | `src/components/FameSwitcher.astro` | Edition tabs (has JS) |
 | `src/components/TalkCard.astro` | Lazy embed (has JS) |
 | `src/components/PaperRow.astro` | `<details>`, no JS |
-| `src/components/Figure.astro`, `VideoEmbed.astro` | MDX helpers for migrated posts |
-| `src/pages/*.astro` | The five pages, `writing/[...slug]`, `404` |
+| `src/pages/*.astro` | The five pages and `404` |
 | `public/` | Migrated PDFs, images, favicon, robots.txt |
 | `tests/unit/*.test.ts` | Vitest |
 | `tests/e2e/*.spec.ts` | Playwright |
@@ -66,7 +65,6 @@
     "check": "astro check"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.2.0",
     "@astrojs/sitemap": "^3.3.0",
     "@fontsource-variable/inter": "^5.2.5",
     "@fontsource-variable/source-serif-4": "^5.2.5",
@@ -92,22 +90,21 @@ Redirects are declared here now so Task 15 only has to add tests. Astro emits a 
 
 ```js
 import { defineConfig } from 'astro/config';
-import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   site: 'https://hugoriosneto.github.io',
   trailingSlash: 'ignore',
-  integrations: [mdx(), sitemap()],
+  integrations: [sitemap()],
   vite: { plugins: [tailwindcss()] },
   redirects: {
     '/papers': '/research',
     '/blog': '/',
-    '/writing': '/',
     '/repositories': '/',
-    '/blog/2020/tactical-influence-analytics': '/writing/tactical-influence-of-analytics',
-    '/blog/2023/fame-recap': '/writing/fame-23-recap',
+    // Both posts are deleted, so their URLs land on the homepage rather than a page.
+    '/blog/2020/tactical-influence-analytics': '/',
+    '/blog/2023/fame-recap': '/',
     // The old news collection. Astro static redirects do not support wildcards —
     // `'/news/[...slug]'` fails the build with GetStaticPathsRequired — so the four
     // URLs Jekyll actually emitted are enumerated.
@@ -173,7 +170,7 @@ Expected: prints `1` or higher.
 
 ```bash
 git add package.json package-lock.json astro.config.mjs tsconfig.json .nvmrc .gitignore src/pages/index.astro
-git commit -m "build: scaffold Astro project with MDX, sitemap and Tailwind"
+git commit -m "build: scaffold Astro project with sitemap and Tailwind"
 ```
 
 ---
@@ -660,7 +657,7 @@ Everything not listed here is a template demo asset and stays deleted.
 They go to `public/assets/pdf/`, **not** `public/pdf/`, so the served URL stays `/assets/pdf/eniac23.pdf` exactly as it is today. Papers are the most-linked things on an academic site and those URLs appear in citations and other people's pages. A redirect cannot rescue them: an Astro redirect key ending in `.pdf` would emit `dist/assets/pdf/eniac23.pdf/index.html` and serve HTML in response to a PDF request. Keeping the path is the only clean answer.
 
 ```bash
-mkdir -p public/assets/pdf public/img/papers public/img/writing
+mkdir -p public/assets/pdf
 git mv assets/pdf/eniac23.pdf public/assets/pdf/eniac23.pdf
 git mv assets/pdf/gabr.pdf public/assets/pdf/gabr.pdf
 git mv assets/pdf/obso.pdf public/assets/pdf/obso.pdf
@@ -668,21 +665,30 @@ git mv assets/pdf/obso.pdf public/assets/pdf/obso.pdf
 
 Note: the 2024 GraphEPV paper has **no local PDF** — its `papers.yaml` entry links out to Springer instead.
 
-- [ ] **Step 2: Move the four real paper previews and the portrait**
+- [ ] **Step 2: Move the four paper previews into `src/assets/`, not `public/`**
+
+`src/assets/` routes them through `astro:assets`, which is what makes Task 13's consistent square crop possible — plus intrinsic `width`/`height` (no layout shift) and automatic WebP. `public/` would opt out of all three. They have no external-URL constraint, unlike the PDFs, so nothing is lost by moving them.
 
 ```bash
-git mv assets/img/publication_preview/MLSA24.png public/img/papers/graphepv.png
-git mv assets/img/publication_preview/ENIAC23.png public/img/papers/eniac23.png
-git mv assets/img/publication_preview/gabr.png public/img/papers/gabr.png
-git mv assets/img/publication_preview/obso.png public/img/papers/obso.png
-git mv assets/img/Hugo-Rios-Neto.jpg public/img/hugo-rios-neto.jpg
+mkdir -p src/assets/papers
+git mv assets/img/publication_preview/MLSA24.png src/assets/papers/graphepv.png
+git mv assets/img/publication_preview/ENIAC23.png src/assets/papers/eniac23.png
+git mv assets/img/publication_preview/gabr.png src/assets/papers/gabr.png
+git mv assets/img/publication_preview/obso.png src/assets/papers/obso.png
 ```
 
-- [ ] **Step 3: Move the six blog figures**
+Their source dimensions disagree badly — 840×840, 246×246, 310×345, 362×362 — which is exactly why Task 13 crops them to a fixed square rather than rendering them at natural size.
+
+- [ ] **Step 3: Delete the two blog posts and their figures**
+
+Both posts are deleted, not migrated *(decided 2026-07-27; see Task 16)*. Task 4 moved them into `src/content/writing/`; they go now, along with the six figures that only they used and the portrait, which is superseded by a new photograph Hugo is supplying.
 
 ```bash
-for n in 0 1 2 3 4 5; do git mv "assets/img/blog/footure_1_$n.jpg" "public/img/writing/tactical-$n.jpg"; done
+git rm -r --quiet src/content/writing
+git rm --quiet assets/img/Hugo-Rios-Neto.jpg
 ```
+
+The six `assets/img/blog/*.jpg` figures need no explicit command — Step 4 removes everything still under `assets/`.
 
 - [ ] **Step 4: Delete everything left in `assets/`**
 
@@ -710,8 +716,8 @@ Verify the built output has exactly one: `test -f dist/robots.txt && grep -c Liq
 
 - [ ] **Step 6: Verify the kept files are all present**
 
-Run: `ls public/assets/pdf public/img/papers public/img/writing public/img/hugo-rios-neto.jpg`
-Expected: 3 PDFs, 4 paper previews, 6 writing images, 1 portrait. No `example_pdf.pdf`, no `brownian-motion.gif`.
+Run: `ls public/assets/pdf src/assets/papers && ls public/img 2>/dev/null; ls src/content 2>/dev/null`
+Expected: 3 PDFs in `public/assets/pdf`, 4 previews in `src/assets/papers`, **no** `public/img` directory, **no** `src/content/writing`. No `example_pdf.pdf`, no `brownian-motion.gif`, no `tactical-*.jpg`, no portrait.
 
 - [ ] **Step 7: Commit**
 
@@ -831,7 +837,7 @@ The `blurb` refinement is what mechanically enforces the spec's "remit, never he
 
 ```ts
 import { defineCollection, z } from 'astro:content';
-import { file, glob } from 'astro/loaders';
+import { file } from 'astro/loaders';
 
 const BANNED_IN_BLURB = /\b(team of \w+|reports? to|reported to|reporting to|headcount|direct reports?)\b/i;
 
@@ -863,7 +869,6 @@ export const paperSchema = z.object({
     }),
   pdf: z.string().optional(),
   url: z.string().url().optional(),
-  preview: z.string().optional(),
   bibtexKey: z.string(),
   bibtexType: z.enum(['inproceedings', 'article', 'mastersthesis']),
   booktitle: z.string().optional(),
@@ -904,15 +909,6 @@ export const collections = {
   papers: defineCollection({ loader: file('src/content/papers.yaml'), schema: paperSchema }),
   talks: defineCollection({ loader: file('src/content/talks.yaml'), schema: talkSchema }),
   fame: defineCollection({ loader: file('src/content/fame.yaml'), schema: fameSchema }),
-  writing: defineCollection({
-    loader: glob({ pattern: '**/*.mdx', base: './src/content/writing' }),
-    schema: z.object({
-      title: z.string(),
-      date: z.coerce.date(),
-      description: z.string(),
-      originallyPublished: z.string().optional(),
-    }),
-  }),
 };
 ```
 
@@ -1031,7 +1027,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     - João L. L. Gonçalves
     - Jake Schuster
     - Hugo Rios-Neto
-  preview: /img/papers/graphepv.png
   bibtexKey: safreire2024graphepv
   bibtexType: inproceedings
 
@@ -1049,7 +1044,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     - Adriano C. M. Pereira
     - Wagner Meira Jr.
   pdf: /assets/pdf/eniac23.pdf
-  preview: /img/papers/eniac23.png
   bibtexKey: valadao2023characterizing
   bibtexType: inproceedings
 
@@ -1062,7 +1056,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     - Ricardo Furbino M. Nascimento
     - Hugo Rios-Neto
   pdf: /assets/pdf/gabr.pdf
-  preview: /img/papers/gabr.png
   bibtexKey: furbino2022generalized
   bibtexType: inproceedings
 
@@ -1076,7 +1069,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     - Wagner Meira Jr.
     - Pedro O. S. Vaz-de-Melo
   pdf: /assets/pdf/obso.pdf
-  preview: /img/papers/obso.png
   bibtexKey: riosneto2020new
   bibtexType: inproceedings
 ```
@@ -2030,6 +2022,20 @@ test('shows the thesis with supervisor and co-supervisors', async ({ page }) => 
   await expect(thesis).toContainText('Adriano C. M. Pereira');
 });
 
+test('every paper shows a square preview thumbnail at a uniform size', async ({ page }) => {
+  await page.goto('/research');
+  const thumbs = page.getByTestId('paper-preview');
+  await expect(thumbs).toHaveCount(4);
+  // Sources range from 840x840 to 246x246 with mismatched aspect ratios, so the point
+  // of the crop is that every rendered box is identical regardless.
+  const boxes = await thumbs.evaluateAll((els) =>
+    els.map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  for (const [w, h] of boxes) {
+    expect(w).toBe(h);
+    expect(w).toBe(boxes[0][0]);
+  }
+});
+
 test('shows MLSA service with both editions', async ({ page }) => {
   await page.goto('/research');
   const service = page.getByTestId('service');
@@ -2050,15 +2056,31 @@ Native `<details>` gives keyboard operability and correct semantics with zero Ja
 
 ```astro
 ---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
 import { toBibtex } from '../lib/bibtex';
+
 const { paper, id } = Astro.props;
 const bib = toBibtex(paper);
 const pill = 'rounded-full border border-[var(--cardline)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--dim)] no-underline hover:border-[var(--acc)] hover:text-[var(--acc)]';
+
+/* Previews are named after the paper id, so there is no `preview:` field in the data
+   to fall out of sync. Only `width` is passed to <Image> — supplying both width and
+   height would distort sources whose aspect ratios disagree (they span 840x840 to
+   246x246 to 310x345). The square crop is done in CSS with object-cover, which is
+   centred and correct whatever the source aspect. */
+const previews = import.meta.glob<{ default: ImageMetadata }>('/src/assets/papers/*.png', { eager: true });
+const preview = previews[`/src/assets/papers/${id}.png`]?.default;
 ---
 <div data-testid={`paper-${id}`} class="border-b border-[var(--hair)]">
   <details class="group">
     <summary class="flex cursor-pointer list-none items-baseline gap-4 py-3.5">
       <span data-testid="paper-year" class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{paper.year}</span>
+      {preview && (
+        <Image src={preview} alt="" width={160} loading="lazy"
+               data-testid="paper-preview"
+               class="h-14 w-14 shrink-0 self-center rounded-lg border border-[var(--cardline)] object-cover" />
+      )}
       <span>
         <span class="text-[0.9rem] font-medium leading-snug group-hover:text-[var(--acc)]">{paper.title}</span>
         <span class="block text-xs text-[var(--faint)]">{paper.venue}</span>
@@ -2093,8 +2115,6 @@ import PaperRow from '../components/PaperRow.astro';
 import { getCollection } from 'astro:content';
 
 const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.data.year);
-const writing = (await getCollection('writing')).sort((a, b) => +b.data.date - +a.data.date);
-const tactical = writing.find((w) => w.id.includes('tactical'));
 ---
 <Base title="Research — Hugo Rios-Neto" description="Peer-reviewed and conference work in football and basketball analytics, plus the MLSA workshop." current="research">
   <h1 class="pt-12 font-serif text-3xl font-normal tracking-tight">Research</h1>
@@ -2129,16 +2149,6 @@ const tactical = writing.find((w) => w.id.includes('tactical'));
     </div>
   </section>
 
-  {tactical && (
-    <section class="pt-10 pb-4">
-      <SectionHead kicker="Writing" />
-      <a class="block rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6 no-underline"
-         href={`/writing/${tactical.id}`}>
-        <span class="font-medium text-[var(--ink)]">{tactical.data.title}</span>
-        <span class="mt-1 block text-sm text-[var(--dim)]">{tactical.data.description}</span>
-      </a>
-    </section>
-  )}
 </Base>
 
 <script is:inline>
@@ -2156,7 +2166,7 @@ const tactical = writing.find((w) => w.id.includes('tactical'));
 - [ ] **Step 5: Run the test**
 
 Run: `npx playwright test tests/e2e/research.spec.ts --project=desktop`
-Expected: `5 passed`. (The writing section renders only after Task 16; the tests above do not depend on it.)
+Expected: `6 passed` — the sixth is the preview-thumbnail check.
 
 - [ ] **Step 6: Commit**
 
@@ -2308,10 +2318,6 @@ const ordinals = ['1st', '2nd', '3rd', '4th', '5th'];
 import Base from '../layouts/Base.astro';
 import SectionHead from '../components/SectionHead.astro';
 import FameSwitcher from '../components/FameSwitcher.astro';
-import { getCollection } from 'astro:content';
-
-const writing = await getCollection('writing');
-const recap = writing.find((w) => w.id.includes('fame'));
 ---
 <Base title="SALab & FAME — Hugo Rios-Neto" description="Brazil's first sports analytics lab and its first football analytics conference, both built at UFMG." current="salab-fame">
   <h1 class="pt-12 font-serif text-3xl font-normal tracking-tight">SALab &amp; FAME</h1>
@@ -2333,16 +2339,6 @@ const recap = writing.find((w) => w.id.includes('fame'));
     <FameSwitcher />
   </section>
 
-  {recap && (
-    <section class="border-t border-[var(--hair)] py-10">
-      <SectionHead kicker="Writing" />
-      <a class="block rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6 no-underline"
-         href={`/writing/${recap.id}`}>
-        <span class="font-medium text-[var(--ink)]">{recap.data.title}</span>
-        <span class="mt-1 block text-sm text-[var(--dim)]">{recap.data.description}</span>
-      </a>
-    </section>
-  )}
 </Base>
 ```
 
@@ -2499,187 +2495,26 @@ git commit -m "feat: add talks page with click-to-load embeds"
 
 ---
 
-### Task 16: Migrate the two posts
+### Task 16: REMOVED — the two blog posts are deleted, not migrated
 
-The 2020 post uses six `{% include figure.html %}` tags, three `{% include video.html %}` tags and one `{% twitter %}` embed. The tweet becomes a plain link — an embedded tweet would load third-party script on page view, which breaks the "no external requests at runtime" rule from spec §9. The 2023 recap is plain markdown with no Liquid at all.
+**Decided 2026-07-27.** When the spec said "fold the blog posts", it meant fold them into the pillar pages. Hugo meant delete them. Deleting is the decision.
 
-**Files:**
-- Create: `src/components/Figure.astro`, `src/components/VideoEmbed.astro`, `src/content/writing/tactical-influence-of-analytics.mdx`, `src/content/writing/fame-23-recap.mdx`, `src/pages/writing/[...slug].astro`
-- Test: `tests/e2e/writing.spec.ts`
+Nothing to implement here. What this removes:
 
-- [ ] **Step 1: Create `src/components/Figure.astro`**
+- `src/content/writing/` and both `.mdx` files (moved there by Task 4, deleted by Task 5)
+- `src/components/Figure.astro` and `VideoEmbed.astro`
+- `src/pages/writing/[...slug].astro` and the whole `/writing/` route
+- `tests/e2e/writing.spec.ts`
+- The `writing` content collection
+- The six `tactical-*.jpg` figures
+- The `@astrojs/mdx` integration, which nothing else uses
 
-```astro
----
-interface Props { src: string; alt: string; caption?: string }
-const { src, alt, caption } = Astro.props;
----
-<figure class="my-8">
-  <img src={src} alt={alt} loading="lazy" decoding="async"
-       class="w-full rounded-xl border border-[var(--cardline)]" />
-  {caption && <figcaption class="mt-2 text-xs text-[var(--faint)]">{caption}</figcaption>}
-</figure>
-```
+It also removes a rights problem. The first figure in the 2020 post was a press photograph of Jürgen Klopp — the only one of the six carrying no `FOOTURE` watermark, i.e. the only one that was not Hugo's own plot. It was fine on Footure's site; republishing it under his own domain was a different act, in the one industry most likely to notice.
 
-- [ ] **Step 2: Create `src/components/VideoEmbed.astro`**
-
-Same click-to-load rule as the Talks page.
-
-```astro
----
-interface Props { src: string; title: string }
-const { src, title } = Astro.props;
----
-<div class="video-embed my-8 aspect-video overflow-hidden rounded-xl border border-[var(--cardline)] bg-[#ece0b8]" data-embed={src}>
-  <button type="button" class="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 border-0 bg-transparent"
-          aria-label={`Load video: ${title}`}>
-    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
-    <span class="text-xs text-[#7d7358]">{title}</span>
-  </button>
-</div>
-```
-
-**No `<script>` here either** — the 2020 post uses this component three times. The handler goes on the post layout, in the next step.
-
-- [ ] **Step 3: Create `src/pages/writing/[...slug].astro`**
-
-```astro
----
-import { getCollection, render } from 'astro:content';
-import Base from '../../layouts/Base.astro';
-
-export async function getStaticPaths() {
-  const posts = await getCollection('writing');
-  return posts.map((post) => ({ params: { slug: post.id }, props: { post } }));
-}
-
-const { post } = Astro.props;
-const { Content } = await render(post);
-const date = post.data.date.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' });
----
-<Base title={`${post.data.title} — Hugo Rios-Neto`} description={post.data.description}>
-  <article class="py-12">
-    <h1 class="font-serif text-3xl font-normal leading-tight tracking-tight">{post.data.title}</h1>
-    <p class="mt-2 text-sm text-[var(--faint)]">
-      {date}{post.data.originallyPublished && ` · ${post.data.originallyPublished}`}
-    </p>
-    <div class="prose-custom mt-8 max-w-[64ch] leading-[1.75] text-[var(--dim)]
-                [&_h2]:mt-10 [&_h2]:mb-3 [&_h2]:font-serif [&_h2]:text-2xl [&_h2]:text-[var(--ink)]
-                [&_h3]:mt-8 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-[var(--ink)]
-                [&_p]:mb-4 [&_a]:text-[var(--acc)] [&_ul]:mb-4 [&_ul]:list-disc [&_ul]:pl-6">
-      <Content />
-    </div>
-  </article>
-</Base>
-
-<script is:inline>
-  document.querySelectorAll('.video-embed').forEach((el) => {
-    el.querySelector('button')?.addEventListener('click', () => {
-      const iframe = document.createElement('iframe');
-      iframe.src = el.getAttribute('data-embed') || '';
-      iframe.width = '100%'; iframe.height = '100%'; iframe.loading = 'lazy';
-      iframe.setAttribute('allowfullscreen', ''); iframe.style.border = '0';
-      el.replaceChildren(iframe);
-    });
-  });
-</script>
-```
-
-- [ ] **Step 4: Rewrite the frontmatter of `src/content/writing/fame-23-recap.mdx`**
-
-Task 4 already moved this file here. Its body is plain markdown with no Liquid, so **leave the body exactly as it is** and replace only the frontmatter block at the top of the file (everything between the first two `---` lines) with:
-
-```mdx
----
-title: FAME '23 Recap
-date: 2023-11-27
-description: 'A personal recap of Football Analytics: Modeling and Experience 2023.'
----
-```
-
-This drops the old `layout: distill`, `authors:` and `tags:` keys. The `authors` block is what carried the affiliation apparatus the spec removes.
-
-Verify: `head -6 src/content/writing/fame-23-recap.mdx` shows the new frontmatter and no `layout:` key.
-
-- [ ] **Step 5: Convert `src/content/writing/tactical-influence-of-analytics.mdx`**
-
-Task 4 already moved this file here too. Apply these mechanical replacements throughout the body:
-
-| Original Liquid | Replacement |
-|---|---|
-| `{% include figure.html path="assets/img/blog/footure_1_N.jpg" ... %}` plus its surrounding `<div class="row mt-3">` / `<div class="caption">` wrapper | `<Figure src="/img/writing/tactical-N.jpg" alt="..." caption="..." />` — move the caption text out of the `.caption` div |
-| `{% include video.html path="URL" ... %}` | `<VideoEmbed src="URL" title="..." />` |
-| `{% twitter https://twitter.com/FootureFC/status/1264217046293843968 %}` | `[the original Footure thread](https://twitter.com/FootureFC/status/1264217046293843968)` |
-
-Then replace the whole existing frontmatter block with this one, and add the two imports directly beneath it (MDX imports must sit above first use):
-
-```mdx
----
-title: The Tactical Influence of Analytics in Soccer
-date: 2020-05-23
-description: A brief overview of the soccer analytics landscape, and a use case for Pitch Control in evaluating decision-making.
-originallyPublished: Originally published in Portuguese at Footure, 2020
----
-
-import Figure from '../../components/Figure.astro';
-import VideoEmbed from '../../components/VideoEmbed.astro';
-```
-
-There are exactly **six** `figure.html` includes (`footure_1_0` … `footure_1_5` → `/img/writing/tactical-0.jpg` … `tactical-5.jpg`), **three** `video.html` includes, and **one** `{% twitter %}` tag. The old `authors:`/`toc:`/`layout: distill` keys all go — the `authors` block is what carried the Atlético affiliation predating 04/2021, which is the inconsistency spec §4 flags. `originallyPublished` replaces it honestly.
-
-Verify no Liquid survives: `grep -c '{%' src/content/writing/tactical-influence-of-analytics.mdx` must print `0`.
-
-- [ ] **Step 6: Write the test**
-
-`tests/e2e/writing.spec.ts`:
-```ts
-import { test, expect } from '@playwright/test';
-
-test('both posts render at their own URLs', async ({ page }) => {
-  await page.goto('/writing/tactical-influence-of-analytics');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('Tactical Influence');
-
-  await page.goto('/writing/fame-23-recap');
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('FAME');
-});
-
-test('the 2020 post notes it was originally published elsewhere', async ({ page }) => {
-  await page.goto('/writing/tactical-influence-of-analytics');
-  await expect(page.getByText(/Originally published in Portuguese/)).toBeVisible();
-});
-
-test('no Liquid tags survived the migration', async ({ page }) => {
-  await page.goto('/writing/tactical-influence-of-analytics');
-  const body = await page.locator('body').innerText();
-  expect(body).not.toContain('{%');
-  expect(body).not.toContain('include figure.html');
-});
-
-test('post images resolve', async ({ page }) => {
-  await page.goto('/writing/tactical-influence-of-analytics');
-  const images = page.locator('article img');
-  const n = await images.count();
-  expect(n).toBeGreaterThan(0);
-  for (let i = 0; i < n; i++) {
-    const ok = await images.nth(i).evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0);
-    expect(ok).toBe(true);
-  }
-});
-```
-
-- [ ] **Step 7: Run the test**
-
-Run: `npx playwright test tests/e2e/writing.spec.ts --project=desktop`
-Expected: `4 passed`.
-
-- [ ] **Step 8: Commit**
-
-```bash
-git add src/components/Figure.astro src/components/VideoEmbed.astro src/content/writing src/pages/writing tests/e2e/writing.spec.ts
-git commit -m "feat: migrate the two long-form posts to MDX"
-```
+Old post URLs redirect to the homepage (Task 1's `redirects` map, verified by Task 18).
 
 ---
+
 
 ### Task 17: CV page
 
@@ -2909,10 +2744,9 @@ import { test, expect } from '@playwright/test';
 const REDIRECTS: [string, string][] = [
   ['/papers', '/research'],
   ['/blog', '/'],
-  ['/writing', '/'],
   ['/repositories', '/'],
-  ['/blog/2020/tactical-influence-analytics', '/writing/tactical-influence-of-analytics'],
-  ['/blog/2023/fame-recap', '/writing/fame-23-recap'],
+  ['/blog/2020/tactical-influence-analytics', '/'],
+  ['/blog/2023/fame-recap', '/'],
   ['/news', '/'],
   ['/news/1_welcome', '/'],
   ['/news/2_leave_cam', '/'],
@@ -2992,7 +2826,7 @@ git commit -m "feat: add favicon, 404, OG image and redirect coverage"
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const PAGES = ['/', '/research', '/salab-fame', '/talks', '/cv', '/writing/fame-23-recap'];
+const PAGES = ['/', '/research', '/salab-fame', '/talks', '/cv'];
 
 for (const path of PAGES) {
   test(`${path} has no axe violations`, async ({ page }) => {
@@ -3198,23 +3032,28 @@ grep -ril "einstein\|al-folio\|lorem ipsum\|I currently hold a Intelligence Engi
 ```
 Expected: prints `clean`. (Those last three are the exact stale strings from the old homepage and `_data/cv.yml`.)
 
-- [ ] **Step 2: Confirm the five pages and both posts exist in `dist`**
+- [ ] **Step 2: Confirm the five pages exist in `dist` and no post survived**
 
 Run:
 ```bash
-for p in "" research salab-fame talks cv writing/tactical-influence-of-analytics writing/fame-23-recap; do
+for p in "" research salab-fame talks cv; do
   f="dist/${p:+$p/}index.html"
   test -f "$f" && echo "ok  $f" || echo "MISSING  $f"
 done
+test ! -d dist/writing && echo "ok  no /writing route" || echo "UNEXPECTED  dist/writing exists"
 ```
-Expected: seven `ok` lines, no `MISSING`.
+Expected: five `ok` lines for the pages, plus `ok  no /writing route`. No `MISSING`, no `UNEXPECTED`.
 
 - [ ] **Step 3: Confirm no external hosts are contacted on any page**
 
 Run: `npx playwright test tests/e2e/talks.spec.ts -g "third-party" --project=desktop`
 Expected: PASS.
 
-- [ ] **Step 4: Update the README**
+- [ ] **Step 4: Drop the Jekyll entries still in `.gitignore`**
+
+Nine lines survive from the old toolchain and now ignore nothing: `_site`, `.bundle`, `.sass-cache`, `.jekyll-cache`, `.jekyll-metadata`, `.ruby-version`, `.tweet-cache`, `Gemfile.lock`, `vendor`. Remove them; keep `.DS_store`, `.superpowers/` and everything Task 1 added.
+
+- [ ] **Step 5: Update the README**
 
 Replace `README.md` with:
 ```markdown
@@ -3240,12 +3079,56 @@ Adding a paper, talk or FAME edition means adding a YAML entry — no template c
 Design decisions and their reasoning: `docs/superpowers/specs/2026-07-27-personal-website-redesign-design.md`
 ```
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add README.md
-git commit -m "docs: rewrite README for the Astro site"
+git add README.md .gitignore
+git commit -m "docs: rewrite README and drop Jekyll gitignore entries"
 ```
+
+---
+
+---
+
+### Task 22: Place the new portrait — BLOCKED on the image file
+
+Hugo is supplying a new photograph *(decided 2026-07-27)*. It goes in **two** places: the identity block on the homepage, and the Open Graph share card. The old Wembley portrait was deleted in Task 5.
+
+Nothing else is blocked by this, so run Tasks 6–21 first and come back.
+
+**When the file arrives:**
+
+- [ ] **Step 1:** Put it at `src/assets/hugo.jpg` — `src/assets/`, not `public/`, so `astro:assets` gives intrinsic dimensions, WebP and a hashed filename.
+
+- [ ] **Step 2:** Render it in the identity block in `src/components/Hero.astro`, immediately above the name. Only `width` is passed, so the aspect ratio is preserved; the crop is CSS.
+
+```astro
+import { Image } from 'astro:assets';
+import portrait from '../assets/hugo.jpg';
+...
+<div class="max-w-[56ch] border-t-2 border-[var(--ink)] pt-4">
+  <Image src={portrait} alt="Hugo Rios-Neto" width={880} loading="eager" fetchpriority="high"
+         class="mb-4 aspect-[3/2] w-full max-w-md rounded-xl object-cover" />
+  <div class="mb-1 text-lg font-semibold tracking-tight">Hugo Rios-Neto</div>
+```
+
+`loading="eager"` and `fetchpriority="high"` are deliberate: this image is above the fold and will be the Largest Contentful Paint element, so lazy-loading it would *hurt* the Lighthouse score Task 19 gates on. Re-run `npm run lighthouse` after adding it.
+
+- [ ] **Step 3:** Use it for the share card instead of the homepage screenshot. Replace Task 18's Playwright screenshot step with a real 1200×630 card — the photo, with the name and role set over it. A cream, text-heavy page shrunk to thumbnail size reads as illegible grey, and spec §7 makes LinkedIn the de facto inbox, so this card is a high-traffic surface for exactly the intended reader.
+
+- [ ] **Step 4:** Add to `tests/e2e/home.spec.ts`:
+
+```ts
+test('the hero carries a portrait with a real alt text', async ({ page }) => {
+  await page.goto('/');
+  const img = page.getByTestId('hero').getByRole('img');
+  await expect(img).toHaveAttribute('alt', /Hugo Rios-Neto/);
+  const loaded = await img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0);
+  expect(loaded).toBe(true);
+});
+```
+
+- [ ] **Step 5:** Commit as `feat: add portrait to the hero and share card`.
 
 ---
 

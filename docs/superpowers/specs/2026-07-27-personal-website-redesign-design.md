@@ -49,20 +49,16 @@ Five pages. No blog pillar, no news feed.
 | Path | Page | Purpose |
 |---|---|---|
 | `/` | Home | Hero, career trajectory, SALab & FAME teaser, research and talks teasers, "Why Brazil" |
-| `/research/` | Research | Papers, thesis, MLSA service, plus one long-form post |
+| `/research/` | Research | Papers with preview thumbnails, thesis, MLSA service |
 | `/salab-fame/` | SALab & FAME | The lab, and FAME's five editions |
 | `/talks/` | Talks & media | Six talks/podcasts/webinars, lazily embedded |
 | `/cv/` | CV | Full CV, print-styled |
-| `/writing/<slug>/` | Individual posts | Two existing posts, each keeping its own URL |
 
-### Where the two blog posts go
+### The two blog posts are deleted
 
-The blog is not a pillar. The two existing posts are folded in by subject:
+*(Decided 2026-07-27, superseding an earlier reading of "fold the blog posts".)* Neither post survives. There is no `/writing/` route and no blog in any form; the old `/blog/…` URLs redirect to the homepage.
 
-- **"The Tactical Influence of Analytics in Soccer"** (2020) → a *Writing* section on `/research/`
-- **"FAME '23 Recap"** (2023) → surfaced on `/salab-fame/`, under the 2023 edition
-
-Both keep their own permalink under `/writing/`. The Distill layout's author/affiliation apparatus is dropped — which also removes the existing inconsistency where the 2020 post carries an Atlético affiliation Hugo did not hold until 04/2021.
+This also resolves two problems at once. The 2020 post carried an Atlético affiliation Hugo did not hold until 04/2021 — and its lead image was a press photograph of Jürgen Klopp, the only one of its six figures without a `FOOTURE` watermark, i.e. the only one that was not his own work. Republishing an agency image of a Premier League manager under his own domain, to an audience of football clubs, was a risk worth not taking.
 
 ### Redirects
 
@@ -71,9 +67,7 @@ Old permalinks must not break. Minimum redirect map:
 | Old | New |
 |---|---|
 | `/papers/` | `/research/` |
-| `/blog/:year/:title/` | `/writing/<slug>/` — one redirect per post |
-| `/blog/` | `/` |
-| `/writing/` | `/` — there is no writing index; the two posts are reached from their pillar pages |
+| `/blog/`, `/blog/:year/:title/` | `/` — both posts are deleted |
 | `/repositories/` | `/` |
 | `/news/`, `/news/1_welcome/`, `/news/2_leave_cam/`, `/news/3_join_gemini/` | `/` — enumerated, because Astro's static redirects do not support wildcards |
 | `/talks/`, `/cv/` | unchanged |
@@ -121,6 +115,14 @@ Two self-hosted families, no external CDN requests.
 `--bg:#14180F` · `--ink:#F2EBD2` · `--acc:#4FBE7A` (7.7:1) · `--acc2:#8FAAEE` · `--card:#1B2014`
 
 Two things invert rather than translate: the yellow highlighter cannot survive on a dark page and becomes yellow **text** at 13.3:1, and the greens must lighten from `#0a7d33` to `#4FBE7A`.
+
+### Photography
+
+One photograph, supplied by Hugo *(pending as of 2026-07-27)*, used in two places: the **identity block** on the homepage, directly above the name, and the **Open Graph share card**. It is above the fold and will be the Largest Contentful Paint element, so it loads eagerly with `fetchpriority="high"` — lazy-loading it would hurt the performance budget rather than help it.
+
+The share card matters more than it looks: §7 makes LinkedIn the de facto inbox, so that card is the highest-traffic surface the site has for exactly the intended reader. A cream, text-heavy page shrunk to a thumbnail reads as illegible grey, which is what a screenshot would have produced.
+
+The old Wembley portrait is not used.
 
 ### Favicon
 
@@ -187,7 +189,9 @@ Reverse-chronological, expandable rows.
 | 2022 | Generalized Action-based Ball Recovery Model using 360º data | StatsBomb Conference |
 | 2020 | A new look into Off-ball Scoring Opportunity: taking into account the continuous nature of the game | FC Barcelona Analytics in Sports Tomorrow Congress |
 
-Expanded rows show full author lists (Hugo bolded), a PDF link where one exists in `assets/pdf/`, and a BibTeX copy action.
+Each row carries a **square preview thumbnail**, cropped centrally with `object-fit: cover` so all four render identically despite source dimensions spanning 840×840 to 246×246. They live in `src/assets/papers/`, named after the paper id, so `astro:assets` gives intrinsic dimensions, WebP and a hashed filename — and there is no `preview:` data field to fall out of sync.
+
+Expanded rows show full author lists (Hugo bolded), a PDF link where one exists at `/assets/pdf/`, and a BibTeX copy action.
 
 **Thesis** — MSc, Computer Science, UFMG, defended February 2026:
 > *Towards Learning Representations from Spatiotemporal Grids in Soccer*
@@ -196,8 +200,6 @@ Expanded rows show full author lists (Hugo bolded), a PDF link where one exists 
 Co-supervisors are shown deliberately: Jesse Davis is among the most prominent researchers in the field, and the association is a credential. **No abstract** *(decided)*.
 
 **Service** — Co-organizer, Machine Learning & Data Mining for Sports Analytics, 13th edition, ECML/PKDD, Naples, 7 September 2026, with Pieter Robberechts, Maaike Van Roy and Albrecht Zimmermann. Second year as an organizer, following the 12th edition in 2025.
-
-**Writing** — "The Tactical Influence of Analytics in Soccer".
 
 ### SALab & FAME
 
@@ -216,8 +218,6 @@ Co-supervisors are shown deliberately: Jesse Davis is among the most prominent r
 Attendance figures are deliberately omitted *(decided — the edition history proves growth on its own)*. The growth is legible from the format instead: five hours to a full day, one day to workshop-plus-conference, one sponsor to two, and an international collaboration in 2024.
 
 The `'26` tab must render gracefully with no programme, and must handle the transition from upcoming to past without a code change.
-
-**Writing** — "FAME '23 Recap", surfaced under the 2023 edition.
 
 ### Talks & media
 
@@ -275,9 +275,8 @@ Astro content collections, all frontmatter schema-validated:
 | `papers` | Title, authors, venue, year, PDF path, BibTeX string, links |
 | `talks` | Title, description, provider, embed URL, date, tags |
 | `fame` | Edition number, year, date, venue, sponsors, detail, status |
-| `writing` | The two posts, as MDX |
 
-The four BibTeX entries move out of `_bibliography/papers.bib` into the `papers` collection, retaining a BibTeX string per entry for the copy action. `jekyll-scholar` goes.
+The four BibTeX entries move out of `_bibliography/papers.bib` into the `papers` collection, retaining a BibTeX string per entry for the copy action. `jekyll-scholar` goes, and so does `@astrojs/mdx` — with the posts deleted, nothing renders Markdown.
 
 ### Removed entirely
 
