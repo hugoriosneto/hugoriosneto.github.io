@@ -959,7 +959,7 @@ export const fameSchema = z.object({
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/content-schema.test.ts`
-Expected: `18 passed`.
+Expected: `17 passed` — 6 role, 3 paper, 4 talk, 4 FAME.
 
 - [ ] **Step 5: Wire the collections in `src/content.config.ts`**
 
