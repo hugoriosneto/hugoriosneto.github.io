@@ -17,7 +17,11 @@
   --acc2: #012169;
   --mark: rgba(254, 221, 0, 0.85); /* highlighter fill only */
 
-  /* Type */
-  --font-serif: 'Source Serif 4 Variable', Georgia, serif;
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
+     declares those same two names, so `--font-sans: var(--font-sans)` would be a
+     self-reference that only resolves by cascade accident (unlayered beats
+     @layer theme). One `@import './tokens.css' layer(...)` would make the property
+     guaranteed-invalid and silently drop the whole site to Times. */
+  --font-display: 'Source Serif 4 Variable', Georgia, serif;
+  --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 }
