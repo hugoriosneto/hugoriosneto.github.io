@@ -553,18 +553,33 @@ html {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-body);
-  -webkit-font-smoothing: antialiased;
+  /* The nav is sticky and ~45px tall; without this the skip link and any in-page
+     anchor land with their target hidden behind it (WCAG 2.2 SC 2.4.11, which axe
+     does not flag under the wcag21aa tags Task 19 uses). */
+  scroll-padding-top: 4.5rem;
 }
 
+/* Deliberately unlayered, so it beats @layer utilities. That also means a future
+   `focus-visible:outline-*` utility would silently lose to it — intended, but
+   surprising, hence this note.
+   No `border-radius` here: it is an element property, not an outline property, so
+   setting it collapses `rounded-full` pills and `rounded-xl` cards into near-squares
+   the moment they receive focus. Outlines already follow the element's own radius. */
 :focus-visible {
   outline: 2px solid var(--acc);
   outline-offset: 3px;
-  border-radius: 2px;
 }
 
+/* Hero only. The 60% stop is coupled to font size: at display size it reads as a
+   highlighter, at body size the band falls below the baseline and reads as a thick
+   underline. Do not reuse this at body size. */
 .highlight {
   background: linear-gradient(transparent 60%, var(--mark) 60%);
 }
+
+/* Shown only on paper. The CV's name and contact details live in the nav and footer,
+   both of which are .no-print, so without this ⌘P produces an anonymous document. */
+.print-only { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -577,11 +592,16 @@ html {
 
 @media print {
   .no-print { display: none !important; }
+  .print-only { display: block; }
   html { background: #fff; color: #000; }
   a { text-decoration: none; color: #000; }
   a[href^='http']::after { content: ' (' attr(href) ')'; font-size: 0.75em; color: #444; }
+  h1, h2, h3 { break-after: avoid; }
+  .avoid-break { break-inside: avoid; }
 }
 ```
+
+`-webkit-font-smoothing: antialiased` is deliberately absent. It thins glyphs on macOS, which perceptually reduces contrast — and `--faint` and `--acc` sit only 0.23 above the AA threshold that Task 3 spent an entire task establishing by measurement. Not worth trading against.
 
 - [ ] **Step 2: Rescue the two blog posts before deleting anything**
 
@@ -1435,10 +1455,14 @@ const person = {
     <script type="application/ld+json" set:html={JSON.stringify(person)} />
   </head>
   <body class="min-h-screen">
-    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:m-3 focus:rounded focus:bg-[var(--card)] focus:px-3 focus:py-2">Skip to content</a>
+    <!-- z-20 puts the skip link above the sticky nav (z-10); without it the first tab
+         stop on every page renders as ghosted text behind the nav's backdrop-blur.
+         tabindex="-1" on <main> is what actually moves focus — without it the skip
+         link scrolls the page but leaves focus in the nav. -->
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:m-3 focus:rounded focus:bg-[var(--card)] focus:px-3 focus:py-2">Skip to content</a>
     <Nav current={current} />
     <TricolourRule />
-    <main id="main" class="mx-auto max-w-4xl px-6">
+    <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-6">
       <slot />
     </main>
     <Footer />
@@ -2679,6 +2703,20 @@ test('states no headcount and no reporting lines anywhere', async ({ page }) => 
   expect(text).not.toMatch(/team of|reports? to|reported to|direct reports?/i);
 });
 
+test('the printed CV carries the name and contact details', async ({ page }) => {
+  await page.goto('/cv');
+  // Nav and footer are .no-print, so this block is the only place a printed CV
+  // gets a name on it. Emulate print media rather than trusting the class name.
+  await page.emulateMedia({ media: 'print' });
+  const header = page.locator('.print-only');
+  await expect(header).toBeVisible();
+  await expect(header).toContainText('Hugo Rios-Neto');
+  await expect(header).toContainText('LinkedIn');
+  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+  await expect(header).toBeHidden();
+});
+
 test('contains no trace of the old Einstein template', async ({ page }) => {
   await page.goto('/cv');
   const text = await page.locator('body').innerText();
@@ -2725,6 +2763,19 @@ const service = [
 ---
 <Base title="CV — Hugo Rios-Neto" description="Curriculum vitae — football analytics, from Belo Horizonte to Brussels." current="cv">
   <div data-testid="cv" class="py-12">
+    <!-- The name and contact details live in the nav and footer, both .no-print.
+         Without this block ⌘P produces an anonymous CV — which would defeat the
+         entire point of having a print stylesheet instead of a separate PDF. -->
+    <div class="print-only mb-6 border-b-2 border-[var(--ink)] pb-4">
+      <div class="text-2xl font-semibold tracking-tight">Hugo Rios-Neto</div>
+      <div class="mt-1 text-sm">Data Recruitment Lead, RSC Anderlecht</div>
+      <div class="mt-1 text-sm">
+        <a href="https://www.linkedin.com/in/hugoriosneto">LinkedIn</a>
+        <span class="mx-2">·</span>
+        <a href="https://scholar.google.com/citations?user=jtR1qv4AAAAJ">Google Scholar</a>
+      </div>
+    </div>
+
     <div class="mb-8 flex flex-wrap items-start gap-4">
       <div>
         <h1 class="font-serif text-3xl font-normal tracking-tight">Curriculum Vitae</h1>
@@ -2738,7 +2789,7 @@ const service = [
 
     <SectionHead kicker="Experience" />
     {roles.map((r) => (
-      <div class="grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
+      <div class="avoid-break grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
         <div class="text-sm tabular-nums text-[var(--faint)]">{r.data.dates}</div>
         <div>
           <div class="font-semibold">{r.data.title}</div>
@@ -2752,7 +2803,7 @@ const service = [
       <div class="mt-10">
         <SectionHead kicker={kicker} />
         {rows.map((row: any) => (
-          <div class="grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
+          <div class="avoid-break grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
             <div class="text-sm tabular-nums text-[var(--faint)]">{row.when}</div>
             <div>
               <div class="font-semibold">{row.role}</div>
@@ -2774,7 +2825,7 @@ const service = [
 - [ ] **Step 4: Run the test**
 
 Run: `npx playwright test tests/e2e/cv.spec.ts --project=desktop`
-Expected: `5 passed`.
+Expected: `6 passed` — the fifth is the print-header check added after review found ⌘P produced an anonymous CV.
 
 - [ ] **Step 5: Commit**
 
