@@ -1,0 +1,13 @@
+---
+interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string }
+const { kicker, sub, moreHref, moreLabel } = Astro.props;
+---
+<div class="mb-6 flex flex-wrap items-baseline gap-3">
+  <span class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</span>
+  {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
+  {moreHref && (
+    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}>
+      {moreLabel ?? 'More'} →
+    </a>
+  )}
+</div>

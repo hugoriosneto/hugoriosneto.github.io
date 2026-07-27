@@ -1,0 +1,57 @@
+---
+import '../styles/global.css';
+import Nav from '../components/Nav.astro';
+import Footer from '../components/Footer.astro';
+import TricolourRule from '../components/TricolourRule.astro';
+
+interface Props { title: string; description: string; current?: string }
+const { title, description, current } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+
+const person = {
+  '@context': 'https://schema.org',
+  '@type': 'Person',
+  name: 'Hugo Rios-Neto',
+  jobTitle: 'Data Recruitment Lead',
+  worksFor: { '@type': 'Organization', name: 'RSC Anderlecht' },
+  alumniOf: { '@type': 'CollegeOrUniversity', name: 'Universidade Federal de Minas Gerais' },
+  url: 'https://hugoriosneto.github.io',
+  sameAs: [
+    'https://www.linkedin.com/in/hugoriosneto',
+    'https://github.com/hugoriosneto',
+    'https://x.com/hugoriosneto',
+    'https://scholar.google.com/citations?user=jtR1qv4AAAAJ',
+  ],
+};
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL('/img/og.png', Astro.site).href} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json" set:html={JSON.stringify(person)} />
+  </head>
+  <body class="min-h-screen">
+    <!-- z-20 puts the skip link above the sticky nav (z-10); without it the first tab
+         stop on every page renders as ghosted text behind the nav's backdrop-blur.
+         tabindex="-1" on <main> is what actually moves focus — without it the skip
+         link scrolls the page but leaves focus in the nav. -->
+    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:z-20 focus:m-3 focus:rounded focus:bg-[var(--card)] focus:px-3 focus:py-2">Skip to content</a>
+    <Nav current={current} />
+    <TricolourRule />
+    <main id="main" tabindex="-1" class="mx-auto max-w-4xl px-6">
+      <slot />
+    </main>
+    <Footer />
+  </body>
+</html>

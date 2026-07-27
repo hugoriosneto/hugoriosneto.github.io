@@ -1,0 +1,20 @@
+---
+const { current } = Astro.props as { current?: string };
+const links = [
+  { href: '/', label: 'Home', key: 'home' },
+  { href: '/research', label: 'Research', key: 'research' },
+  { href: '/salab-fame', label: 'SALab & FAME', key: 'salab-fame' },
+  { href: '/talks', label: 'Talks', key: 'talks' },
+  { href: '/cv', label: 'CV', key: 'cv' },
+];
+---
+<nav class="sticky top-0 z-10 flex flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3 text-sm
+            border-b border-[var(--hair)] bg-[var(--bg)]/90 backdrop-blur no-print"
+     aria-label="Primary">
+  <a href="/" class="mr-auto font-semibold tracking-tight text-[var(--ink)] no-underline">Hugo Rios-Neto</a>
+  {links.slice(1).map((l) => (
+    <a href={l.href}
+       class="no-underline text-[var(--dim)] hover:text-[var(--acc)]"
+       aria-current={current === l.key ? 'page' : undefined}>{l.label}</a>
+  ))}
+</nav>
