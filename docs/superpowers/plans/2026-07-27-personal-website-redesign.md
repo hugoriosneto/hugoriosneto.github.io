@@ -418,9 +418,18 @@ import { contrastRatio } from '../../src/lib/contrast';
 // invocation directory, so a bare relative path only works when run from the repo root.
 const css = readFileSync(new URL('../../src/styles/tokens.css', import.meta.url), 'utf8');
 
-/** Every declaration in the file, so nothing can be added without being classified. */
+/**
+ * Every declaration in the file, so nothing can be added without being classified.
+ *
+ * Comments are stripped first, and that is load-bearing rather than tidiness: the
+ * header comment in tokens.css quotes the literal text `--font-sans: var(--font-sans)`,
+ * which matches the declaration pattern. Worse, `[^;]+` crosses newlines, so the bogus
+ * match would run on and swallow the next real `;` — silently erasing a genuine
+ * declaration from the map.
+ */
 const DECLS = new Map<string, string>();
-for (const m of css.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) {
+const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+for (const m of withoutComments.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) {
   if (DECLS.has(m[1])) throw new Error(`Token --${m[1]} is declared twice`);
   DECLS.set(m[1], m[2].trim());
 }
