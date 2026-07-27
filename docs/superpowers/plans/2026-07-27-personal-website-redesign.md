@@ -396,9 +396,13 @@ Expected: `5 passed`.
   --acc2: #012169;
   --mark: rgba(254, 221, 0, 0.85); /* highlighter fill only */
 
-  /* Type */
-  --font-serif: 'Source Serif 4 Variable', Georgia, serif;
-  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
+     declares those same two names, so `--font-sans: var(--font-sans)` would be a
+     self-reference that only resolves by cascade accident (unlayered beats
+     @layer theme). One `@import './tokens.css' layer(...)` would make the property
+     guaranteed-invalid and silently drop the whole site to Times. */
+  --font-display: 'Source Serif 4 Variable', Georgia, serif;
+  --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 }
 ```
 
@@ -414,13 +418,42 @@ import { contrastRatio } from '../../src/lib/contrast';
 // invocation directory, so a bare relative path only works when run from the repo root.
 const css = readFileSync(new URL('../../src/styles/tokens.css', import.meta.url), 'utf8');
 
+/** Every declaration in the file, so nothing can be added without being classified. */
+const DECLS = new Map<string, string>();
+for (const m of css.matchAll(/--([a-z0-9-]+):\s*([^;]+);/g)) {
+  if (DECLS.has(m[1])) throw new Error(`Token --${m[1]} is declared twice`);
+  DECLS.set(m[1], m[2].trim());
+}
+
+function raw(name: string): string {
+  const v = DECLS.get(name);
+  if (!v) throw new Error(`Token --${name} not found`);
+  return v;
+}
+
 function token(name: string): string {
-  const m = css.match(new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,6})\\s*;`));
-  if (!m) throw new Error(`Token --${name} not found or not a hex value`);
-  return m[1];
+  const v = raw(name);
+  if (!/^#[0-9a-fA-F]{3,6}$/.test(v)) throw new Error(`Token --${name} is not a hex value: ${v}`);
+  return v;
+}
+
+/** Flatten an `rgba(r, g, b, a)` foreground over an opaque hex background. */
+function composite(rgba: string, bgHex: string): string {
+  const m = rgba.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)[,\s/]+([\d.]+)\s*\)/);
+  if (!m) throw new Error(`Not an rgba() value: ${rgba}`);
+  const [r, g, b, a] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+  const bg = [1, 3, 5].map((i) => parseInt(bgHex.slice(i, i + 2), 16));
+  const mix = [r, g, b].map((c, i) => Math.round(a * c + (1 - a) * bg[i]));
+  return '#' + mix.map((c) => c.toString(16).padStart(2, '0')).join('');
 }
 
 const TEXT_TOKENS = ['ink', 'dim', 'faint', 'acc', 'acc2'] as const;
+const CLASSIFIED = {
+  surface: ['bg', 'card', 'hair', 'hair2', 'cardline'],
+  text: [...TEXT_TOKENS],
+  fill: ['accfill', 'mark'],
+  nonColour: ['font-display', 'font-body'],
+};
 
 describe('design tokens', () => {
   it.each(TEXT_TOKENS)('--%s passes AA on --bg', (name) => {
@@ -435,14 +468,34 @@ describe('design tokens', () => {
     const ink = contrastRatio(token('ink'), token('bg'));
     const dim = contrastRatio(token('dim'), token('bg'));
     const faint = contrastRatio(token('faint'), token('bg'));
-    expect(ink).toBeGreaterThan(dim + 2);
-    expect(dim).toBeGreaterThan(faint + 1);
+    expect(ink, '--ink must read as a darker tier than --dim').toBeGreaterThan(dim + 2);
+    expect(dim, '--dim must read as a darker tier than --faint').toBeGreaterThan(faint + 1);
   });
 
-  it('documents that --accfill must never be used as text', () => {
-    // #009739 is 3.83:1 on white and 3.9:1 on cream. This test exists so that if
-    // anyone "simplifies" --acc and --accfill into one token, it fails loudly.
+  it('keeps --accfill graphic-only: usable as a shape, unusable under text', () => {
+    // #009739 is 3.83:1 on white and 3.44:1 on cream. Clears 1.4.11 for graphics,
+    // fails 1.4.3 for text — in both directions. This test exists so that if anyone
+    // "simplifies" --acc and --accfill into one token, it fails loudly.
+    expect(contrastRatio(token('accfill'), token('bg'))).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(token('accfill'), token('bg'))).toBeLessThan(4.5);
+    expect(contrastRatio('#ffffff', token('accfill'))).toBeLessThan(4.5);
+  });
+
+  it('keeps white legible on the two fills that do carry text', () => {
+    // --acc is the fill for the CV print button; --acc2 for anything darker.
+    expect(contrastRatio('#ffffff', token('acc'))).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio('#ffffff', token('acc2'))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps --ink legible over the highlighter, and warns off highlighting links', () => {
+    const marked = composite(raw('mark'), token('bg'));
+    expect(contrastRatio(token('ink'), marked)).toBeGreaterThanOrEqual(4.5);
+    // --acc over the highlighter is only ~3.98:1, so a highlighted link would fail.
+    expect(contrastRatio(token('acc'), marked)).toBeLessThan(4.5);
+  });
+
+  it('classifies every declared token, so a new one cannot slip in untested', () => {
+    expect([...DECLS.keys()].sort()).toEqual(Object.values(CLASSIFIED).flat().sort());
   });
 });
 ```
@@ -450,7 +503,9 @@ describe('design tokens', () => {
 - [ ] **Step 7: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/tokens.test.ts`
-Expected: `12 passed` — five text tokens against `--bg`, the same five against `--card`, the tier-separation test, and the `--accfill` guard.
+Expected: `15 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the highlighter composite, and the exhaustive classification check.
+
+The last four exist because the first draft of this suite tested only one axis — text token against surface token — and that blind spot let a real WCAG 1.4.3 failure into Task 17, where a `text-white` button sat on `--accfill` at 3.83:1.
 
 - [ ] **Step 8: Commit**
 
@@ -475,26 +530,20 @@ git commit -m "feat: add design tokens with enforced WCAG AA contrast tests"
 @import '@fontsource-variable/inter';
 @import './tokens.css';
 
+/* Only the two font families are mapped into @theme, because only the `font-serif`
+   and `font-sans` utilities are ever used. Colour utilities (`bg-bg`, `text-ink`…)
+   appear nowhere in this plan — every consumer writes `text-[var(--acc)]` — so
+   mapping 11 --color-* entries would be dead weight. Note the names differ from
+   the token names on purpose; see the comment in tokens.css. */
 @theme {
-  --color-bg: var(--bg);
-  --color-card: var(--card);
-  --color-ink: var(--ink);
-  --color-dim: var(--dim);
-  --color-faint: var(--faint);
-  --color-acc: var(--acc);
-  --color-accfill: var(--accfill);
-  --color-acc2: var(--acc2);
-  --color-hair: var(--hair);
-  --color-hair2: var(--hair2);
-  --color-cardline: var(--cardline);
-  --font-serif: var(--font-serif);
-  --font-sans: var(--font-sans);
+  --font-serif: var(--font-display);
+  --font-sans: var(--font-body);
 }
 
 html {
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -2673,7 +2722,7 @@ const service = [
         <p class="mt-1 text-sm text-[var(--dim)]">Belo Horizonte → Brussels.</p>
       </div>
       <button type="button" id="cv-print"
-              class="no-print ml-auto rounded-full bg-[var(--accfill)] px-4 py-2 text-sm font-semibold text-white">
+              class="no-print ml-auto rounded-full bg-[var(--acc)] px-4 py-2 text-sm font-semibold text-white">
         Print / save as PDF
       </button>
     </div>

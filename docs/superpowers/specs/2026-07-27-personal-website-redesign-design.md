@@ -89,13 +89,13 @@ Base is **cream `#FBF3D5`** — not white. A tinted page makes white cards genui
 | Token | Value | Use |
 |---|---|---|
 | `--bg` | `#FBF3D5` | Page background |
-| `--ink` | `#151a15` | Body text — 16.6:1 |
+| `--ink` | `#151a15` | Body text — 15.9:1 |
 | `--dim` | `#575849` | Secondary text — 6.5:1 |
-| `--faint` | `#6f6c5c` | Metadata, years — 4.8:1 |
+| `--faint` | `#6f6c5c` | Metadata, years — 4.7:1 |
 | `--acc` | `#0a7d33` | **Text and links** — 4.7:1 on cream, passes WCAG AA |
-| `--accfill` | `#009739` | **Fills and graphics only** — flag green is 3.8:1 on white and must never be text |
+| `--accfill` | `#009739` | **Fills and graphics only** — flag green is 3.83:1 on white and 3.44:1 on cream, so it must never be text |
 | `--acc2` | `#012169` | Secondary accent — kickers, tags |
-| `--mark` | `#FEDD00` | **Highlighter fill only** — 1.3:1 on white, never text on a light background |
+| `--mark` | `rgba(254,221,0,0.85)` | **Highlighter fill only.** Flag yellow at 85%, which composites over `--bg` to `#fee020`. Never text: opaque `#FEDD00` is 1.3:1 on white. `--ink` over the composite is 13.4:1, but `--acc` over it is only 3.98:1 — so a link must never be highlighted |
 | `--card` | `#fffdf7` | Card surfaces |
 | `--hair` / `--hair2` | `#eee3bd` / `#ddd0a4` | Dividers, borders |
 
