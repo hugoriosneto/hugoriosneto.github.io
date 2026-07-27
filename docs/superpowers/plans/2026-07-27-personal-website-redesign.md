@@ -3090,7 +3090,20 @@ Expected: five `ok` lines for the pages, plus `ok  no /writing route`. No `MISSI
 Run: `npx playwright test tests/e2e/talks.spec.ts -g "third-party" --project=desktop`
 Expected: PASS.
 
-- [ ] **Step 4: Clear the remaining al-folio residue outside `dist`**
+- [ ] **Step 4: Confirm `.nojekyll` is protecting something real**
+
+When it was added in Task 5, `dist/_astro/` did not yet exist — no page imported `global.css` until Task 9's layout landed. Now it does, so this is finally checkable:
+
+```bash
+npm run build
+test -f dist/.nojekyll && echo "ok  .nojekyll present"
+ls dist/_astro/*.css >/dev/null 2>&1 && echo "ok  CSS in _astro" || echo "PROBLEM  no CSS in _astro"
+ls dist/_astro/*.woff2 >/dev/null 2>&1 && echo "ok  fonts in _astro" || echo "PROBLEM  no fonts in _astro"
+```
+
+All three must print `ok`. Without the dotfile, GitHub Pages would drop everything the second and third lines just found.
+
+- [ ] **Step 5: Clear the remaining al-folio residue outside `dist`**
 
 Spec §1 opens by complaining about template residue on a public repo, and Step 1's grep only inspects `dist`, so none of this would surface:
 
@@ -3098,11 +3111,11 @@ Spec §1 opens by complaining about template residue on a public repo, and Step 
 - `.github/ISSUE_TEMPLATE/bug_report.md` and `feature_request.md` are al-folio's. Delete both.
 - `.idea/SALabUFMG.github.io.iml` is tracked and names the wrong project. Delete the tracked `.idea` files.
 
-- [ ] **Step 5: Drop the Jekyll entries still in `.gitignore`**
+- [ ] **Step 6: Drop the Jekyll entries still in `.gitignore`**
 
 Nine lines survive from the old toolchain and now ignore nothing: `_site`, `.bundle`, `.sass-cache`, `.jekyll-cache`, `.jekyll-metadata`, `.ruby-version`, `.tweet-cache`, `Gemfile.lock`, `vendor`. Remove them; keep `.DS_store`, `.superpowers/` and everything Task 1 added.
 
-- [ ] **Step 6: Update the README**
+- [ ] **Step 7: Update the README**
 
 Replace `README.md` with:
 ```markdown
@@ -3128,7 +3141,7 @@ Adding a paper, talk or FAME edition means adding a YAML entry — no template c
 Design decisions and their reasoning: `docs/superpowers/specs/2026-07-27-personal-website-redesign-design.md`
 ```
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add -A
