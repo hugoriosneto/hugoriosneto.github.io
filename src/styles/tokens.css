@@ -1,0 +1,23 @@
+:root {
+  /* Surfaces */
+  --bg: #FBF3D5;
+  --card: #fffdf7;
+  --hair: #eee3bd;
+  --hair2: #ddd0a4;
+  --cardline: #ece1bc;
+
+  /* Text — every one of these is contrast-tested in tests/unit/tokens.test.ts */
+  --ink: #151a15;
+  --dim: #575849;
+  --faint: #6f6c5c;
+
+  /* Accents */
+  --acc: #0a7d33;      /* text and links only */
+  --accfill: #009739;  /* fills and graphics only — fails AA as text */
+  --acc2: #012169;
+  --mark: rgba(254, 221, 0, 0.85); /* highlighter fill only */
+
+  /* Type */
+  --font-serif: 'Source Serif 4 Variable', Georgia, serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+}
