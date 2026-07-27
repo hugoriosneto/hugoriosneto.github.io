@@ -1,0 +1,74 @@
+- id: atletico
+  org: Atlético Mineiro
+  title: Data Scientist
+  dates: 04/2021 – 07/2023
+  verb: Built
+  order: 1
+  position: 4
+  blurb: >-
+    Joined as the analytics department was created — the first at any Brazilian club —
+    and built the function from nothing inside a top-flight side.
+  capabilities:
+    - Built a department from zero
+    - Inside a top-flight club
+    - Working to coaching staff
+
+- id: salab-fame
+  org: SALab & FAME · UFMG
+  title: Co-founder
+  dates: 2022 – now
+  verb: Founded
+  order: 2
+  position: 18
+  blurb: >-
+    Brazil's first sports analytics lab, and the country's first football analytics
+    conference — FAME, now in its fifth edition.
+  capabilities:
+    - Founded a lasting institution
+    - Ran a 5-edition event
+    - Sponsors and partners
+    - Developed people
+
+- id: gemini
+  org: Gemini Sports Analytics
+  title: Intelligence Engineer
+  dates: 07/2023 – 06/2025
+  verb: Scaled
+  order: 3
+  position: 45
+  blurb: >-
+    Moved from one club to many — taking analytics work from research through to
+    product that clubs across leagues actually used.
+  capabilities:
+    - Worked across many clubs
+    - Research to shipped product
+    - Facing club decision-makers
+
+- id: orlando
+  org: Orlando City SC
+  title: Manager, Insights & Analytics
+  dates: 07/2025 – 12/2025
+  verb: Owned
+  order: 4
+  position: 80
+  blurb: >-
+    Owned the club's insights and analytics function — the first time the whole
+    thing was mine to shape.
+  capabilities:
+    - Owned a club function
+    - North American market
+
+- id: anderlecht
+  org: RSC Anderlecht
+  title: Data Recruitment Lead
+  dates: 01/2026 – now
+  verb: Leads
+  order: 5
+  position: 93
+  blurb: >-
+    Recruitment analytics at one of Belgium's biggest clubs — the data behind who
+    the club signs, and why.
+  capabilities:
+    - Recruitment decision-making
+    - European first division
+    - Squad-building input
