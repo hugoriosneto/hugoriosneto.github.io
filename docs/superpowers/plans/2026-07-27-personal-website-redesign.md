@@ -1415,13 +1415,13 @@ describe('toBibtex', () => {
   });
 
   it('joins authors with " and "', () => {
-    expect(toBibtex(paper)).toContain('author   = {Ricardo Furbino M. Nascimento and Hugo Rios-Neto}');
+    expect(toBibtex(paper)).toContain('author    = {Ricardo Furbino M. Nascimento and Hugo Rios-Neto}');
   });
 
   it('includes title, year and booktitle', () => {
     const out = toBibtex(paper);
-    expect(out).toContain('title    = {Generalized Action-based Ball Recovery Model using 360º data}');
-    expect(out).toContain('year     = {2022}');
+    expect(out).toContain('title     = {Generalized Action-based Ball Recovery Model using 360º data}');
+    expect(out).toContain('year      = {2022}');
     expect(out).toContain('booktitle = {StatsBomb Conference}');
   });
 
@@ -1435,6 +1435,16 @@ describe('toBibtex', () => {
 
   it('closes the entry', () => {
     expect(toBibtex(paper).trimEnd().endsWith('}')).toBe(true);
+  });
+
+  it('aligns every equals sign in the same column', () => {
+    // This output gets pasted into other people's .bib files; ragged columns read
+    // as sloppy from someone whose whole positioning is rigour.
+    const cols = toBibtex({ ...paper, publisher: 'Springer' })
+      .split('\n')
+      .filter((l) => l.includes(' = '))
+      .map((l) => l.indexOf('='));
+    expect(new Set(cols).size).toBe(1);
   });
 });
 ```
@@ -1457,13 +1467,19 @@ export interface BibtexInput {
   publisher?: string;
 }
 
+/* Field names pad to the width of the longest one (`booktitle`/`publisher`, 9 chars)
+   so every `=` lands in the same column. An earlier version padded title/author/year
+   to a different width from booktitle/publisher, which put the `=` signs one column
+   apart — ragged output that ends up pasted into other people's .bib files. */
+const field = (name: string, value: string | number) => `  ${name.padEnd(9)} = {${value}},`;
+
 export function toBibtex(p: BibtexInput): string {
   const lines: string[] = [`@${p.bibtexType}{${p.bibtexKey},`];
-  lines.push(`  title    = {${p.title}},`);
-  lines.push(`  author   = {${p.authors.join(' and ')}},`);
-  lines.push(`  year     = {${p.year}},`);
-  if (p.booktitle) lines.push(`  booktitle = {${p.booktitle}},`);
-  if (p.publisher) lines.push(`  publisher = {${p.publisher}},`);
+  lines.push(field('title', p.title));
+  lines.push(field('author', p.authors.join(' and ')));
+  lines.push(field('year', p.year));
+  if (p.booktitle) lines.push(field('booktitle', p.booktitle));
+  if (p.publisher) lines.push(field('publisher', p.publisher));
   lines[lines.length - 1] = lines[lines.length - 1].replace(/,$/, '');
   lines.push('}');
   return lines.join('\n');
@@ -1473,7 +1489,7 @@ export function toBibtex(p: BibtexInput): string {
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/bibtex.test.ts`
-Expected: `6 passed`.
+Expected: `7 passed`.
 
 - [ ] **Step 5: Commit**
 
