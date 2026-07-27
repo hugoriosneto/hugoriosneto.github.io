@@ -10,7 +10,6 @@
     and built the function from nothing inside a top-flight side.
   capabilities:
     - Built a department from zero
-    - Inside a top-flight club
     - Working to coaching staff
 
 - id: salab-fame
@@ -25,9 +24,9 @@
     conference — FAME, now in its fifth edition.
   capabilities:
     - Founded a lasting institution
-    - Ran a 5-edition event
-    - Sponsors and partners
-    - Developed people
+    - Five editions and counting
+    - Brought sponsors and partners
+    - Put people into the industry
 
 - id: gemini
   org: Gemini Sports Analytics
@@ -42,7 +41,7 @@
   capabilities:
     - Worked across many clubs
     - Research to shipped product
-    - Facing club decision-makers
+    - Trusted by club decision-makers
 
 - id: orlando
   org: Orlando City SC
@@ -52,11 +51,10 @@
   order: 4
   position: 80
   blurb: >-
-    Owned the club's insights and analytics function — the first time the whole
-    thing was mine to shape.
+    Owned the club's insights and analytics function end to end — what got
+    prioritised, what got built, and what the club acted on.
   capabilities:
     - Owned a club function
-    - North American market
 
 - id: anderlecht
   org: RSC Anderlecht
@@ -70,5 +68,4 @@
     the club signs, and why.
   capabilities:
     - Recruitment decision-making
-    - European first division
-    - Squad-building input
+    - In the room on squad-building

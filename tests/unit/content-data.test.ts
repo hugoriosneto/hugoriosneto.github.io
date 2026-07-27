@@ -30,12 +30,37 @@ describe('invariants a per-entry schema cannot express', () => {
     }
   });
 
-  it('FAME editions are contiguous from 1 with exactly one upcoming', () => {
-    // Task 14 indexes a hardcoded 5-element ordinals array; edition 6 would
-    // render "undefined edition".
+  it('FAME editions are contiguous from 1', () => {
     const eds = fame.map((e) => e.edition).sort((a, b) => a - b);
     expect(eds).toEqual(eds.map((_, i) => i + 1));
-    expect(fame.filter((e) => e.status === 'upcoming')).toHaveLength(1);
+  });
+
+  it('at most one upcoming edition, and it has not already happened', () => {
+    // NOT toHaveLength(1): after 28 Sep 2026, flipping '26 to past is the correct
+    // action and would have failed a hard equality — punishing correct maintenance
+    // and leaving "leave the stale badge up" as the only green state.
+    const upcoming = fame.filter((e) => e.status === 'upcoming');
+    expect(upcoming.length).toBeLessThanOrEqual(1);
+    for (const e of upcoming) {
+      expect(new Date(e.date).getTime(), `${e.id} is still marked upcoming but its date has passed`)
+        .toBeGreaterThan(Date.now());
+    }
+  });
+
+  it('every role position still decodes to roughly the right date as "now" advances', () => {
+    // The rail's right edge is "now", so fixed positions rot at about a month of
+    // error per month elapsed. This goes red on its own schedule rather than quietly.
+    const AXIS_START = new Date('2021-01-01').getTime();
+    const span = Date.now() - AXIS_START;
+    const monthsOff = (r: any) => {
+      const implied = AXIS_START + (r.position / 100) * span;
+      const [mm, yyyy] = String(r.dates).slice(0, 7).split('/');
+      const actual = new Date(Number(yyyy), Number(mm) - 1, 1).getTime();
+      return Math.abs(implied - actual) / (1000 * 60 * 60 * 24 * 30.44);
+    };
+    for (const r of roles.filter((x) => /^\d{2}\/\d{4}/.test(x.dates))) {
+      expect(monthsOff(r), `${r.id}'s dot has drifted from its actual start date`).toBeLessThan(9);
+    }
   });
 
   it('every paper pdf resolves to a real file', () => {
