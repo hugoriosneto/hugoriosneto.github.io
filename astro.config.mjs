@@ -15,5 +15,12 @@ export default defineConfig({
     '/repositories': '/',
     '/blog/2020/tactical-influence-analytics': '/writing/tactical-influence-of-analytics',
     '/blog/2023/fame-recap': '/writing/fame-23-recap',
+    // The old news collection. Astro static redirects do not support wildcards —
+    // `'/news/[...slug]'` fails the build with GetStaticPathsRequired — so the four
+    // URLs Jekyll actually emitted are enumerated.
+    '/news': '/',
+    '/news/1_welcome': '/',
+    '/news/2_leave_cam': '/',
+    '/news/3_join_gemini': '/',
   },
 });
