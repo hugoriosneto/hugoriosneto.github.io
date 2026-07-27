@@ -1003,6 +1003,8 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
 
 **Every entry needs an `id:` key.** The `file()` loader builds `entry.id` from it, and an entry without one is **silently skipped at exit 0** — no error, no warning, the collection just comes back short. This is not enforceable by the zod schema, which never sees the dropped entry. Step 7's uniqueness test catches it (missing ids all collapse to `undefined`), but know the failure mode.
 
+**On the capability chips.** These accumulate on the trajectory and are the site's densest piece of positioning, so they are written to a rule: *every chip must say something the org name beside it does not*. Three earlier chips broke it — "Inside a top-flight club", "North American market" and "European first division" each restated a club name displayed four inches away in 24px type, padding the accumulation a sceptical reader would discount on sight. Four others were cut too quiet to land: "input" is what you say when you are not in the room. Twelve chips that each add something beat fifteen where five repeat the label above them. Do not reintroduce a chip that only names where the job was.
+
 - [ ] **Step 1: Create `src/content/roles.yaml`**
 
 ```yaml
@@ -1018,7 +1020,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     and built the function from nothing inside a top-flight side.
   capabilities:
     - Built a department from zero
-    - Inside a top-flight club
     - Working to coaching staff
 
 - id: salab-fame
@@ -1034,8 +1035,8 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   capabilities:
     - Founded a lasting institution
     - Five editions and counting
-    - Sponsors and partners
-    - Developed people
+    - Brought sponsors and partners
+    - Put people into the industry
 
 - id: gemini
   org: Gemini Sports Analytics
@@ -1050,7 +1051,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   capabilities:
     - Worked across many clubs
     - Research to shipped product
-    - Facing club decision-makers
+    - Trusted by club decision-makers
 
 - id: orlando
   org: Orlando City SC
@@ -1064,7 +1065,6 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     prioritised, what got built, and what the club acted on.
   capabilities:
     - Owned a club function
-    - North American market
 
 - id: anderlecht
   org: RSC Anderlecht
@@ -1078,8 +1078,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
     the club signs, and why.
   capabilities:
     - Recruitment decision-making
-    - European first division
-    - Squad-building input
+    - In the room on squad-building
 ```
 
 - [ ] **Step 2: Create `src/content/papers.yaml`**
