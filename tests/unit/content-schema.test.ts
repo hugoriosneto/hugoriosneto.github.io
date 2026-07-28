@@ -62,6 +62,8 @@ describe('talkSchema', () => {
   const valid = {
     title: 'Opta Pro Forum', description: 'Algorithm Track.',
     provider: 'vimeo', embedUrl: 'https://player.vimeo.com/video/819432708',
+    // vimeo.com, not player.vimeo.com — the watch host differs from the player host,
+    // which is the whole reason WATCH_HOSTS exists separately.
     url: 'https://vimeo.com/819432708',
     language: 'EN', format: 'Conference', order: 1,
   };
@@ -76,6 +78,12 @@ describe('talkSchema', () => {
 
   it('rejects a non-https embed', () => {
     expect(() => talkSchema.parse({ ...valid, embedUrl: 'http://insecure.test/x' })).toThrow();
+  });
+
+  it('rejects a watch url on the wrong host', () => {
+    // player.vimeo.com is the embed host, not a page a human can open.
+    expect(() => talkSchema.parse({ ...valid, url: 'https://player.vimeo.com/video/819432708' })).toThrow();
+    expect(() => talkSchema.parse({ ...valid, url: 'https://evil.test/watch' })).toThrow();
   });
 
   it('rejects an embed whose host does not match its provider', () => {

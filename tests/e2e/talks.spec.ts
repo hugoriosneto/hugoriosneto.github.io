@@ -7,6 +7,9 @@ test('lists all six talks', async ({ page }) => {
 
 test('loads no iframes until a card is clicked', async ({ page }) => {
   await page.goto('/talks');
+  // The card assertion first: on its own, "no iframes" passes against a 404 page just as
+  // happily as against a correct one.
+  await expect(page.getByTestId('talk-card')).toHaveCount(6);
   await expect(page.locator('iframe')).toHaveCount(0);
 });
 
@@ -39,6 +42,8 @@ test('makes no third-party requests before a click', async ({ page }) => {
   });
   await page.goto('/talks');
   await page.waitForLoadState('networkidle');
+  // Same reasoning: a 404 also makes no third-party requests.
+  await expect(page.getByTestId('talk-card')).toHaveCount(6);
   expect(external).toEqual([]);
 });
 

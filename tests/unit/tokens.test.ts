@@ -80,11 +80,15 @@ describe('design tokens', () => {
     expect(contrastRatio('#ffffff', token('accfill'))).toBeLessThan(4.5);
   });
 
-  it('keeps the award badge legible on its own fill', () => {
-    // The badge fill composites flag yellow at 30% over cream. Checked explicitly
-    // because --award-fg sits on neither --bg nor --card.
-    const badgeFill = composite('rgba(254, 221, 0, 0.3)', token('bg'));
-    expect(contrastRatio(token('award-fg'), badgeFill)).toBeGreaterThanOrEqual(4.5);
+  it('keeps the award badge legible on its own fill, on both surfaces it sits on', () => {
+    // Flag yellow at 30%, composited over whichever surface is behind it: --bg on the
+    // homepage teaser, --card inside a talk card. Both are checked because the badge
+    // renders on both and --award-fg sits on neither directly.
+    for (const surface of ['bg', 'card'] as const) {
+      const badgeFill = composite('rgba(254, 221, 0, 0.3)', token(surface));
+      expect(contrastRatio(token('award-fg'), badgeFill),
+        `award badge over --${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it('keeps white legible on the two fills that do carry text', () => {
