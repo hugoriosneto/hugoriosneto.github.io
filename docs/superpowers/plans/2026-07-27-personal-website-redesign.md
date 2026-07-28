@@ -2638,16 +2638,61 @@ test('a paper row expands to show authors and links', async ({ page }) => {
   await page.goto('/research');
   const row = page.getByTestId('paper-gabr');
   await expect(row.getByText('Ricardo Furbino')).toBeHidden();
-  await row.locator('summary').click();
+  await row.locator('summary').first().click();
   await expect(row.getByText('Ricardo Furbino')).toBeVisible();
-  await expect(row.getByRole('link', { name: 'PDF' })).toHaveAttribute('href', '/assets/pdf/gabr.pdf');
+  await expect(row.getByRole('link', { name: /^PDF/ })).toHaveAttribute('href', '/assets/pdf/gabr.pdf');
+});
+
+test('the BibTeX entry is readable and copyable without JavaScript', async ({ browser }) => {
+  // The entry used to live only in a data attribute behind a button that did nothing
+  // when scripts were off — on a page whose whole premise is working without them.
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const p = await ctx.newPage();
+  await p.goto('/research');
+  const row = p.getByTestId('paper-gabr');
+  await row.locator('summary').first().click();
+  await row.locator('[data-bibtex-row] summary').click();
+  await expect(row.locator('[data-bibtex-row] pre')).toContainText('@inproceedings{furbino2022generalized');
+  await expect(row.locator('[data-bibtex-row] pre')).toContainText('{Wagner Meira Jr.}');
+  // No copy button exists without JS — the script creates it, so nothing dead renders.
+  await expect(row.getByRole('button', { name: 'Copy' })).toHaveCount(0);
+  await ctx.close();
+});
+
+test('copying twice does not strand the button label', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/research');
+  const row = page.getByTestId('paper-gabr');
+  await row.locator('summary').first().click();
+  await row.locator('[data-bibtex-row] summary').click();
+  const btn = row.getByRole('button', { name: /Copy/ });
+  await btn.click();
+  await btn.click();
+  // Capturing the label inside the handler meant the second click saved "Copied" as the
+  // text to restore, leaving the button permanently mislabelled.
+  await expect(btn).toHaveText('Copy', { timeout: 4000 });
+});
+
+test('a failed copy says so instead of failing silently', async ({ page }) => {
+  await page.goto('/research');
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: () => Promise.reject(new Error('denied')) }, configurable: true,
+    });
+  });
+  const row = page.getByTestId('paper-gabr');
+  await row.locator('summary').first().click();
+  await row.locator('[data-bibtex-row] summary').click();
+  await row.getByRole('button', { name: /Copy/ }).click();
+  await expect(row.getByRole('button')).toContainText('⌘C');
+  await expect(page.locator('#bibtex-status')).toContainText('Copy failed');
 });
 
 test('the 2024 paper has no local PDF link', async ({ page }) => {
   await page.goto('/research');
   const row = page.getByTestId('paper-graphepv');
-  await row.locator('summary').click();
-  await expect(row.getByRole('link', { name: 'PDF' })).toHaveCount(0);
+  await row.locator('summary').first().click();
+  await expect(row.getByRole('link', { name: /^PDF/ })).toHaveCount(0);
 });
 
 test('shows the thesis with supervisor and co-supervisors', async ({ page }) => {
@@ -2671,6 +2716,9 @@ test('every paper shows a square preview thumbnail at a uniform size', async ({ 
   const boxes = await thumbs.evaluateAll((els) =>
     els.map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
   for (const [w, h] of boxes) {
+    // toBeGreaterThan(0) first: comparing the four boxes only to each other stays green
+    // if a CSS regression collapses all four to 0x0.
+    expect(w).toBeGreaterThan(0);
     expect(w).toBe(h);
     expect(w).toBe(boxes[0][0]);
   }
@@ -2698,11 +2746,18 @@ Native `<details>` gives keyboard operability and correct semantics with zero Ja
 ---
 import { Image } from 'astro:assets';
 import type { ImageMetadata } from 'astro';
+import type { CollectionEntry } from 'astro:content';
 import { toBibtex } from '../lib/bibtex';
 
+/* Without this, Astro.props is `any` — which is why the author map needed hand-written
+   annotations, and why astro check reported 0/0/0 while verifying nothing about
+   paper.venue or paper.pdf. */
+interface Props { paper: CollectionEntry<'papers'>['data']; id: string }
 const { paper, id } = Astro.props;
 const bib = toBibtex(paper);
-const pill = 'rounded-full border border-[var(--cardline)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--dim)] no-underline hover:border-[var(--acc)] hover:text-[var(--acc)]';
+/* --hair2, not --cardline, on the border: these are the only signal that a pill is
+   pressable rather than a caption, and --cardline measures 1.18:1 against the page. */
+const pill = 'rounded-full border border-[var(--hair2)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--dim)] no-underline hover:border-[var(--acc)] hover:text-[var(--acc)]';
 
 /* Previews are named after the paper id, so there is no `preview:` field in the data
    to fall out of sync. Only `width` is passed to <Image> — supplying both width and
@@ -2713,8 +2768,10 @@ const previews = import.meta.glob<{ default: ImageMetadata }>('/src/assets/paper
 const preview = previews[`/src/assets/papers/${id}.png`]?.default;
 ---
 <div data-testid={`paper-${id}`} class="border-b border-[var(--hair)]">
-  <details class="group">
-    <summary class="flex cursor-pointer list-none items-baseline gap-4 py-3.5">
+  <details>
+    <!-- `group` on the summary, not the details: on the details, hovering a pill in the
+         expanded body turned the title green. -->
+    <summary class="group flex cursor-pointer list-none items-baseline gap-4 py-3.5">
       <span data-testid="paper-year" class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{paper.year}</span>
       {preview && (
         <Image src={preview} alt="" width={160} loading="lazy"
@@ -2733,10 +2790,21 @@ const preview = previews[`/src/assets/papers/${id}.png`]?.default;
           <>{i > 0 && ', '}{n.includes('Rios-Neto') ? <b class="font-semibold text-[var(--ink)]">{n}</b> : n}</>
         ))}
       </p>
-      <div class="flex flex-wrap gap-1.5">
-        {paper.pdf && <a class={pill} href={paper.pdf}>PDF</a>}
-        {paper.url && <a class={pill} href={paper.url} target="_blank" rel="noopener">Publisher</a>}
-        <button type="button" class={pill} data-bibtex={bib}>Copy BibTeX</button>
+      <div class="flex flex-wrap items-start gap-1.5">
+        <!-- Labelled: three rows each offering a bare "PDF" gives a screen-reader user
+             pulling up an elements list three indistinguishable entries. -->
+        {paper.pdf && <a class={pill} href={paper.pdf} aria-label={`PDF — ${paper.title}`}>PDF</a>}
+        {paper.url && <a class={pill} href={paper.url} target="_blank" rel="noopener"
+                        aria-label={`Publisher page — ${paper.title}`}>Publisher</a>}
+        <!-- A nested <details>, not a button. The entry is selectable and copyable with
+             JavaScript off; the page script upgrades it with a one-click copy. The
+             earlier version rendered a button that, without JS, was visible, focusable,
+             clickable and did nothing — on a page whose whole premise is working
+             without JS. -->
+        <details class="w-full" data-bibtex-row>
+          <summary class={`${pill} inline-block w-auto cursor-pointer list-none`}>BibTeX</summary>
+          <pre class="mt-2 overflow-x-auto rounded-lg border border-[var(--cardline)] bg-[var(--card)] p-3 text-xs leading-relaxed text-[var(--dim)]"><code>{bib}</code></pre>
+        </details>
       </div>
     </div>
   </details>
@@ -2765,6 +2833,7 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
   <div class="border-t border-[var(--hair)]">
     {papers.map((p) => <PaperRow paper={p.data} id={p.id} />)}
   </div>
+  <p id="bibtex-status" role="status" aria-live="polite" class="sr-only"></p>
 
   <section class="pt-10">
     <SectionHead kicker="Thesis" />
@@ -2792,12 +2861,42 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
 </Base>
 
 <script is:inline>
-  document.querySelectorAll('button[data-bibtex]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(b.getAttribute('data-bibtex') || '');
-      const original = b.textContent;
-      b.textContent = 'Copied';
-      setTimeout(() => { b.textContent = original; }, 1500);
+  /* Upgrades each BibTeX disclosure with a copy button. The <pre> is already selectable
+     without this, so nothing here is load-bearing — which is why the button is created
+     rather than rendered: no dead control exists when the script does not run. */
+  const status = document.getElementById('bibtex-status');
+  document.querySelectorAll('[data-bibtex-row]').forEach((row) => {
+    const pre = row.querySelector('pre');
+    const summary = row.querySelector('summary');
+    if (!pre || !summary) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = summary.className;
+    btn.textContent = 'Copy';
+    btn.style.marginTop = '0.5rem';
+    pre.after(btn);
+
+    /* Captured once, outside the handler. Captured inside, a second click while the
+       label read "Copied" would restore it to "Copied" — permanently. */
+    const original = btn.textContent;
+    let timer;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.textContent || '');
+        btn.textContent = 'Copied';
+        /* A bare textContent swap on the focused element is not announced. Screen-reader
+           users otherwise get silence and no way to know whether it worked. */
+        if (status) status.textContent = 'BibTeX copied to clipboard';
+      } catch {
+        /* Rejects on a denied permission, or wherever navigator.clipboard is undefined —
+           over plain HTTP on a LAN preview, for instance. Previously this threw an
+           unhandled rejection and left the button looking simply broken. */
+        btn.textContent = 'Press ⌘C';
+        if (status) status.textContent = 'Copy failed — select the text and copy manually';
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => { btn.textContent = original; }, 1500);
     });
   });
 </script>
@@ -2806,7 +2905,7 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
 - [ ] **Step 5: Run the test**
 
 Run: `npx playwright test tests/e2e/research.spec.ts --project=desktop`
-Expected: `6 passed` — the sixth is the preview-thumbnail check.
+Expected: `9 passed`.
 
 - [ ] **Step 6: Commit**
 
