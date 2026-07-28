@@ -15,6 +15,7 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
   <div class="border-t border-[var(--hair)]">
     {papers.map((p) => <PaperRow paper={p.data} id={p.id} />)}
   </div>
+  <p id="bibtex-status" role="status" aria-live="polite" class="sr-only"></p>
 
   <section class="pt-10">
     <SectionHead kicker="Thesis" />
@@ -42,12 +43,42 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
 </Base>
 
 <script is:inline>
-  document.querySelectorAll('button[data-bibtex]').forEach((b) => {
-    b.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(b.getAttribute('data-bibtex') || '');
-      const original = b.textContent;
-      b.textContent = 'Copied';
-      setTimeout(() => { b.textContent = original; }, 1500);
+  /* Upgrades each BibTeX disclosure with a copy button. The <pre> is already selectable
+     without this, so nothing here is load-bearing — which is why the button is created
+     rather than rendered: no dead control exists when the script does not run. */
+  const status = document.getElementById('bibtex-status');
+  document.querySelectorAll('[data-bibtex-row]').forEach((row) => {
+    const pre = row.querySelector('pre');
+    const summary = row.querySelector('summary');
+    if (!pre || !summary) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = summary.className;
+    btn.textContent = 'Copy';
+    btn.style.marginTop = '0.5rem';
+    pre.after(btn);
+
+    /* Captured once, outside the handler. Captured inside, a second click while the
+       label read "Copied" would restore it to "Copied" — permanently. */
+    const original = btn.textContent;
+    let timer;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.textContent || '');
+        btn.textContent = 'Copied';
+        /* A bare textContent swap on the focused element is not announced. Screen-reader
+           users otherwise get silence and no way to know whether it worked. */
+        if (status) status.textContent = 'BibTeX copied to clipboard';
+      } catch {
+        /* Rejects on a denied permission, or wherever navigator.clipboard is undefined —
+           over plain HTTP on a LAN preview, for instance. Previously this threw an
+           unhandled rejection and left the button looking simply broken. */
+        btn.textContent = 'Press ⌘C';
+        if (status) status.textContent = 'Copy failed — select the text and copy manually';
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => { btn.textContent = original; }, 1500);
     });
   });
 </script>
