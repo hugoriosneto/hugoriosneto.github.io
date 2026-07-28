@@ -39,7 +39,15 @@ test('the portrait is eager and high priority, never lazy', async ({ page }) => 
   const portrait = portraitOf(page);
   // On desktop the portrait is above the fold and is the LCP element. loading="lazy"
   // would push the largest paint behind the lazy-load heuristic and cost the 0.95
-  // performance gate; fetchpriority="high" is what pulls it ahead of the fonts.
+  // performance gate — that half is load-bearing and stays asserted.
+  //
+  // fetchpriority="high" is NOT. It was A/B'd against removing it: identical 1656ms on
+  // the gated mobile run, a -0.5ms median across six interleaved Lighthouse pairs, and
+  // 4ms in the WRONG direction on desktop — on a harness independently shown sensitive
+  // to a 149ms shift. It is kept because it declares the truth about the desktop LCP
+  // element and costs nothing (the emitted HTML is byte-identical either way), not
+  // because it was measured to help. An earlier comment here claimed it "pulls the
+  // image ahead of the fonts"; that was never measured and is false.
   await expect(portrait).not.toHaveAttribute('loading', 'lazy');
   await expect(portrait).toHaveAttribute('loading', 'eager');
   await expect(portrait).toHaveAttribute('fetchpriority', 'high');
