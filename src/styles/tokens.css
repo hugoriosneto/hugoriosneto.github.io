@@ -17,6 +17,12 @@
   --acc2: #012169;
   --mark: rgba(254, 221, 0, 0.85); /* highlighter fill only */
 
+  /* Award badge. These were literals in index.astro, the only text colours in the
+     codebase outside this file — which meant the AA suite structurally could not see
+     them. Named here so the classification test pulls them in automatically. */
+  --award-fg: #7a5f00;
+  --award-line: #d9bb45;
+
   /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
      declares those same two names, so `--font-sans: var(--font-sans)` would be a
      self-reference that only resolves by cascade accident (unlayered beats

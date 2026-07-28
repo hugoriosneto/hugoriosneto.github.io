@@ -82,7 +82,9 @@ test('shows the two things built from nothing', async ({ page }) => {
   const built = page.getByTestId('built');
   await expect(built).toContainText('Sports Analytics Lab');
   await expect(built).toContainText('FAME');
-  await expect(built).toContainText('5');
+  // "fifth edition", not the digit 5: the count is spelled out because "across 5
+  // editions" implied five completed when the fifth is 28 September 2026.
+  await expect(built).toContainText('fifth edition');
 });
 
 test('Why Brazil uses the approved W2 copy', async ({ page }) => {
@@ -99,9 +101,43 @@ test('the research teaser carries the thesis and MLSA rows, not just papers', as
   await expect(body).toContainText('13th edition');
 });
 
+test('the research and talks lists share one left edge', async ({ page }) => {
+  await page.goto('/');
+  // They previously started 56px apart with identical typography, which read as two
+  // people having built them. The talks language gutter is what closes it.
+  const [research, talks] = await Promise.all([
+    page.getByTestId('research-title').first().evaluate((e) => e.getBoundingClientRect().x),
+    page.getByTestId('talks-title').first().evaluate((e) => e.getBoundingClientRect().x),
+  ]);
+  expect(Math.abs(research - talks), `research titles at ${research}, talks at ${talks}`).toBeLessThan(2);
+});
+
+test('no list draws a trailing rule above the next section', async ({ page }) => {
+  await page.goto('/');
+  // The defect this guards: `border-b` on every <li> gave the LAST row a bottom rule,
+  // 48px above the next section's `border-t` — two hairlines with only padding between.
+  // An earlier version of this test looked for rules within 8px of each other, which
+  // could never fire: the gap is a full section's padding. Assert the cause instead —
+  // divide-y deliberately skips the last child, so a trailing border means someone
+  // re-added border-b.
+  // Scoped to lists that opted into divide-y — the only ones where a trailing border
+  // is a defect. Plain `main ul` also catches the trajectory's capability-chip cloud,
+  // whose chips are rounded pills with a border on all four sides, so its last child
+  // always reports a bottom border and the test was unconditionally red.
+  const trailing = await page.evaluate(() =>
+    [...document.querySelectorAll('main ul[class*="divide-y"]')].map((ul, i) => {
+      const last = ul.lastElementChild;
+      const w = last ? parseFloat(getComputedStyle(last).borderBottomWidth) : 0;
+      return { list: i, width: w };
+    }).filter((r) => r.width > 0));
+  expect(trailing, `list(s) drawing a trailing rule: ${JSON.stringify(trailing)}`).toEqual([]);
+});
+
 test('teasers link to the full pages', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: /All research/ })).toHaveAttribute('href', '/research');
   await expect(page.getByRole('link', { name: /All talks/ })).toHaveAttribute('href', '/talks');
-  await expect(page.getByRole('link', { name: /SALab & FAME/ }).last()).toHaveAttribute('href', '/salab-fame');
+  // Scoped to the section: unscoped with .last() this fell through to the nav's own
+  // /salab-fame link and passed even with the teaser link deleted. Mutation-tested.
+  await expect(page.getByTestId('built-more')).toHaveAttribute('href', '/salab-fame');
 });
