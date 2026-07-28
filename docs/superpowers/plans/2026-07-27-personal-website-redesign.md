@@ -1704,7 +1704,10 @@ const Kicker = tag;
   <Kicker class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</Kicker>
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
-    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref} data-testid={moreTestid}>
+    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}
+       data-testid={moreTestid}
+       target={moreHref?.startsWith('http') ? '_blank' : undefined}
+       rel={moreHref?.startsWith('http') ? 'noopener' : undefined}>
       {moreLabel ?? 'More'} <span aria-hidden="true">→</span>
     </a>
   )}
@@ -2972,7 +2975,9 @@ test('shows sponsors where there are any and omits the row where there are none'
   await page.getByRole('tab', { name: /2024/ }).click();
   await expect(page.getByTestId('fame-panel')).toContainText('OneFan');
   await page.getByRole('tab', { name: /2022/ }).click();
-  await expect(page.getByTestId('fame-sponsors')).toHaveCount(0);
+  // Visibility, not count: every edition's panel is in the DOM now, so '24's sponsors
+  // line still exists — it is just inside a hidden panel.
+  await expect(page.getByTestId('fame-panel').getByTestId('fame-sponsors')).toBeHidden();
 });
 
 test('renders the upcoming edition without a programme', async ({ page }) => {
@@ -2993,7 +2998,44 @@ test('the default edition is server-rendered, so it survives with JavaScript off
   await expect(panel).toContainText('3 September 2025');
   await expect(panel).toContainText('4th edition');
   await expect(panel).toContainText('Gradient Sports');
+  // Every edition is in the served HTML, not only the default. Spec §3 singles out FAME
+  // '26 as "a fact, not an aspiration", and this date previously appeared in zero
+  // rendered bytes anywhere on the site without JavaScript.
+  await expect(p.locator('#fame-panel-4')).toContainText('28 September 2026');
+  await expect(p.locator('#fame-panel-4')).toContainText('Upcoming');
   await ctx.close();
+});
+
+test('the panels are reachable by keyboard', async ({ page }) => {
+  await page.goto('/salab-fame');
+  // None of the panels contains a focusable element, so without tabindex="0" Tab jumps
+  // from the tablist straight to the footer and the selected content is unreachable.
+  // axe has no rule for this — Task 19's gate would pass it.
+  const tabbable = await page.locator('.fame-panel:not([hidden])').getAttribute('tabindex');
+  expect(tabbable).toBe('0');
+});
+
+test('the upcoming badge is a separate word', async ({ page }) => {
+  await page.goto('/salab-fame');
+  await page.getByRole('tab', { name: /2026/ }).click();
+  // ml-2 gives the visual gap but no word boundary; this read as "5th editionUPCOMING".
+  await expect(page.getByTestId('fame-panel')).toContainText('5th edition Upcoming');
+});
+
+test('the page links out to both institutions', async ({ page }) => {
+  await page.goto('/salab-fame');
+  // The page whose whole function is proof previously had zero outbound links.
+  await expect(page.getByTestId('salab-link')).toHaveAttribute('href', 'https://salabufmg.github.io/');
+  await expect(page.getByTestId('fame-link')).toHaveAttribute('href', 'https://salabufmg.github.io/FAME26/');
+  await expect(page.getByTestId('salab-link')).toHaveAttribute('rel', 'noopener');
+});
+
+test('the tablist stays on one row at 375px', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/salab-fame');
+  const rows = await page.getByRole('tab').evaluateAll((els) =>
+    new Set(els.map((e) => Math.round(e.getBoundingClientRect().top))).size);
+  expect(rows, '2026 orphans onto a second row').toBe(1);
 });
 
 test('Home and End jump to the ends of the tablist', async ({ page }) => {
@@ -3023,13 +3065,18 @@ Expected: FAIL — `/salab-fame` 404s.
 
 - [ ] **Step 3: Create `src/components/FameSwitcher.astro`**
 
-**The default panel is server-rendered.** An earlier draft left `#fame-panel` empty for the
-script to fill, which meant that with JavaScript off `/salab-fame` showed a heading, the
-SALab paragraph, five year tabs that did nothing, and an empty box — losing FAME entirely,
-on the page that exists to carry it. Task 11 hit exactly this and the reasoning is the
-same: the script is `is:inline`, so the failure modes are content blockers, any CSP added
-later, and crawlers that do not execute JS. Class strings live in one `C` object shared by
-the markup and the script so the two cannot drift.
+**All five panels are server-rendered and toggled with `hidden`** — not one panel whose
+`innerHTML` the script rewrites. An earlier draft server-rendered only the default panel,
+which fixed "no-JS loses all of FAME" but not "no-JS loses the *upcoming* edition": the
+string `28 September 2026` appeared in zero rendered bytes anywhere on the site without
+JavaScript, and spec §3 singles that event out as *"a fact, not an aspiration"*. The
+`Upcoming` badge was worse — it existed only inside the script's template literal, in a
+code path no server render could ever reach, because the default is by construction a past
+edition.
+
+Rendering all five also deletes `esc()`, deletes the shared class object, deletes the 4KB
+`define:vars` payload, and removes the SSR-versus-JS drift class of bug outright. The
+script's only job becomes toggling `hidden`.
 
 ```astro
 ---
@@ -3040,53 +3087,63 @@ const data = editions.map((e) => e.data);
 const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${n}th`;
 
 /* The most recent edition that has actually happened — not the last tab. Opening on the
-   upcoming one shows a title, a date and 26 characters of "Programme to be announced",
-   the emptiest panel on the site, where spec §6 wants the growth argument. Self-corrects
-   once '26 flips to past. */
+   upcoming one shows a date and 26 characters of "Programme to be announced", the
+   emptiest panel on the site, where spec §6 wants the growth argument. Self-corrects once
+   '26 flips to past. */
 const defaultIndex = Math.max(0, data.map((e) => e.status).lastIndexOf('past'));
-
-const C = {
-  head: 'text-lg font-semibold tracking-tight',
-  meta: 'mb-2.5 text-xs text-[var(--faint)]',
-  body: 'max-w-[58ch] leading-relaxed text-[var(--dim)]',
-  note: 'max-w-[58ch] leading-relaxed text-[var(--faint)]',
-  sponsors: 'mt-3 text-xs text-[var(--faint)]',
-  badge: 'ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]',
-};
-const d = data[defaultIndex];
 ---
 <div>
   <div role="tablist" aria-label="FAME editions" class="mb-5 flex flex-wrap gap-1.5">
     {data.map((e, i) => (
       <button type="button" role="tab" id={`fame-tab-${i}`}
-              aria-controls="fame-panel"
+              aria-controls={`fame-panel-${i}`}
               aria-selected={i === defaultIndex ? 'true' : 'false'}
               tabindex={i === defaultIndex ? 0 : -1}
               data-index={i}
-              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]"
+              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-2.5 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]"
               style={i === defaultIndex ? 'background:var(--acc);border-color:var(--acc);color:#fff' : ''}>
         {e.year}
       </button>
     ))}
   </div>
-  <div id="fame-panel" role="tabpanel" data-testid="fame-panel"
-       aria-labelledby={`fame-tab-${defaultIndex}`} class="min-h-[8rem]">
-    <div class={C.head}>FAME '{String(d.year).slice(2)} — {ordinal(d.edition)} edition</div>
-    <div class={C.meta}>{d.date} · {d.venue}</div>
-    {d.detail ? <p class={C.body}>{d.detail}</p> : <p class={C.note}>{d.note}</p>}
-    {d.sponsors.length > 0 && (
-      <p data-testid="fame-sponsors" class={C.sponsors}>Sponsored by {d.sponsors.join(' and ')}</p>
-    )}
+
+  <!-- data-testid stays on the wrapper so tests keep resolving one element.
+       tabindex="0" on each panel because none contains a focusable element: without it
+       the APG pattern breaks and Tab jumps from the tablist straight to the footer,
+       leaving the content the tab just selected unreachable by keyboard. axe has no rule
+       for this, so Task 19's gate would have passed it. -->
+  <div data-testid="fame-panel" class="min-h-[10rem]">
+    {data.map((e, i) => (
+      <div id={`fame-panel-${i}`} role="tabpanel" tabindex="0"
+           aria-labelledby={`fame-tab-${i}`} hidden={i !== defaultIndex} class="fame-panel">
+        <h3 class="text-lg font-semibold tracking-tight">
+          FAME '{String(e.year).slice(2)} — {ordinal(e.edition)} edition
+          {/* The space before the badge is load-bearing: ml-2 supplies the visual gap but
+              no word boundary, so this read as "5th editionUPCOMING" to a screen reader
+              and to any text extraction. */}
+          {e.status === 'upcoming' && (
+            <> <span class="ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">Upcoming</span></>
+          )}
+        </h3>
+        <p class="mb-2.5 text-xs text-[var(--faint)]">{e.date} · {e.venue}</p>
+        {e.detail
+          ? <p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">{e.detail}</p>
+          : <p class="max-w-[58ch] leading-relaxed text-[var(--faint)]">{e.note}</p>}
+        {e.sponsors.length > 0 && (
+          <p data-testid="fame-sponsors" class="mt-3 text-xs text-[var(--faint)]">
+            Sponsored by {e.sponsors.join(' and ')}
+          </p>
+        )}
+      </div>
+    ))}
   </div>
 </div>
 
-<script is:inline define:vars={{ data, C, defaultIndex, ordinals: data.map((e) => ordinal(e.edition)) }}>
+<script is:inline>
   (() => {
-    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const tabs = Array.from(document.querySelectorAll('.fame-tab'));
-    const panel = document.getElementById('fame-panel');
-    if (!tabs.length || !panel) return;
+    const panels = Array.from(document.querySelectorAll('.fame-panel'));
+    if (!tabs.length || tabs.length !== panels.length) return;
 
     function select(i) {
       tabs.forEach((t, j) => {
@@ -3094,27 +3151,12 @@ const d = data[defaultIndex];
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
         /* --acc, not --accfill: white on #009739 is 3.83:1 and fails AA at this 14px
-           label size. White on #0a7d33 is 5.26:1. Task 19's axe gate reads computed
-           styles after this runs, so it would catch it. */
+           label size. White on #0a7d33 is 5.26:1. */
         t.style.background = on ? 'var(--acc)' : 'var(--card)';
         t.style.borderColor = on ? 'var(--acc)' : 'var(--cardline)';
         t.style.color = on ? '#fff' : 'var(--dim)';
       });
-      panel.setAttribute('aria-labelledby', `fame-tab-${i}`);
-
-      const e = data[i];
-      const badge = e.status === 'upcoming'
-        ? `<span class="${C.badge}">Upcoming</span>` : '';
-      const body = e.detail
-        ? `<p class="${C.body}">${esc(e.detail)}</p>`
-        : `<p class="${C.note}">${esc(e.note || '')}</p>`;
-      const sponsors = e.sponsors && e.sponsors.length
-        ? `<p data-testid="fame-sponsors" class="${C.sponsors}">Sponsored by ${e.sponsors.map(esc).join(' and ')}</p>`
-        : '';
-
-      panel.innerHTML =
-        `<div class="${C.head}">FAME '${esc(String(e.year).slice(2))} — ${ordinals[i]} edition${badge}</div>` +
-        `<div class="${C.meta}">${esc(e.date)} · ${esc(e.venue)}</div>` + body + sponsors;
+      panels.forEach((p, j) => { p.hidden = j !== i; });
     }
 
     tabs.forEach((t, i) => {
@@ -3128,8 +3170,6 @@ const d = data[defaultIndex];
         select(keys[ev.key]);
       });
     });
-
-    select(defaultIndex);
   })();
 </script>
 ```
@@ -3149,7 +3189,7 @@ import FameSwitcher from '../components/FameSwitcher.astro';
   </p>
 
   <section class="border-t border-[var(--hair)] py-10">
-    <SectionHead kicker="Sports Analytics Lab" sub="founded 2022" />
+    <SectionHead kicker="Sports Analytics Lab" sub="founded 2022" moreHref="https://salabufmg.github.io/" moreLabel="salabufmg.github.io" moreTestid="salab-link" />
     <p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">
       Brazil's first sports analytics lab, co-founded in 2022 and supervised by Wagner Meira Jr.
       and Adriano César Pereira of UFMG's Computer Science Department. Research, teaching, and a
@@ -3157,8 +3197,10 @@ import FameSwitcher from '../components/FameSwitcher.astro';
     </p>
   </section>
 
+  <!-- The page whose entire function is proof had zero outbound links. A reader who
+       thinks "is this real?" needs somewhere to go, and the homepage already links both. -->
   <section class="border-t border-[var(--hair)] py-10">
-    <SectionHead kicker="FAME" sub="Football Analytics: Modeling & Experience" />
+    <SectionHead kicker="FAME" sub="Football Analytics: Modeling & Experience" moreHref="https://salabufmg.github.io/FAME26/" moreLabel="FAME '26" moreTestid="fame-link" />
     <FameSwitcher />
   </section>
 
@@ -3168,7 +3210,7 @@ import FameSwitcher from '../components/FameSwitcher.astro';
 - [ ] **Step 5: Run the test**
 
 Run: `npx playwright test tests/e2e/salab-fame.spec.ts --project=desktop`
-Expected: `8 passed`.
+Expected: `12 passed`.
 
 - [ ] **Step 6: Commit**
 
