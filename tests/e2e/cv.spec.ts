@@ -47,8 +47,24 @@ test('SALab appears under Founded, never under Experience', async ({ page }) => 
 
 test('contains no trace of the old Einstein template', async ({ page }) => {
   await page.goto('/cv');
+  // A pure negative passes against a 404 as happily as against a correct page. Assert
+  // the CV actually rendered first, or this cannot tell "clean" from "absent".
+  await expect(page.getByTestId('cv-experience')).toContainText('RSC Anderlecht');
   const text = await page.locator('body').innerText();
   expect(text).not.toMatch(/Einstein|Nobel|Max Planck|Zurich/i);
+});
+
+test('every surface follows a change to the facts module', async ({ page }) => {
+  // Step 0's whole purpose. The thesis defence date is rendered in three places and in
+  // two formats; a sentinel check found /cv silently not following, because its date
+  // column was an independent literal.
+  await page.goto('/cv');
+  await expect(page.getByTestId('cv-education')).toContainText('02/2026');
+  await expect(page.getByTestId('cv-education')).toContainText('Towards Learning Representations');
+  await page.goto('/research');
+  await expect(page.getByTestId('thesis')).toContainText('February 2026');
+  await page.goto('/');
+  await expect(page.locator('body')).toContainText('February 2026');
 });
 
 test('lists both MLSA editions and the Opta win', async ({ page }) => {
