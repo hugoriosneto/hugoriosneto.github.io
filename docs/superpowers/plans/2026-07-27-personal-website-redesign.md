@@ -2120,8 +2120,16 @@ test('marks new chips with text, not only colour', async ({ page }) => {
   await page.goto('/');
   // Freshness was encoded only in border and text colour — WCAG 1.4.1, and invisible
   // to assistive tech. The two Anderlecht chips are the new ones at the final stop.
+  // Marking is per selected stop, not "only ever the last of the five": each stop's own
+  // newly-revealed chips are the ones flagged. Anderlecht contributes two.
   await page.getByRole('button', { name: /RSC Anderlecht/ }).click();
   await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(2);
+  // Atlético contributes two of its own, so this is 2 rather than 0.
+  await page.getByRole('button', { name: /Atlético Mineiro/ }).click();
+  await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(2);
+  // Orlando contributes exactly one — the clearest proof the count tracks the stop.
+  await page.getByRole('button', { name: /Orlando City SC/ }).click();
+  await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(1);
 });
 
 test('Home and End jump to the ends of the rail', async ({ page }) => {
@@ -2237,9 +2245,9 @@ const C = {
            Safari drop list semantics entirely. Same fix applies in Footer.astro. -->
       <ul id="traj-chips" data-testid="trajectory-chips" role="list" aria-labelledby="traj-added"
           class="m-0 flex list-none flex-wrap gap-1.5 p-0">
-        {data.flatMap((role, k) => role.capabilities.map((c) => (
+        {data.flatMap((role, k) => role.capabilities.map((cap) => (
           <li class={`${C.chip} ${k === last ? C.fresh : C.stale}`}>
-            {c}{k === last && <span class="sr-only"> (new)</span>}
+            {cap}{k === last && <span class="sr-only"> (new)</span>}
           </li>
         )))}
       </ul>
@@ -2279,13 +2287,16 @@ const C = {
         `<p class="${C.blurb}">${esc(r.blurb)}</p>`;
 
       chips.innerHTML = data.slice(0, i + 1).flatMap((role, k) =>
-        role.capabilities.map((c) => {
+        /* `cap`, not `c`: one letter from the outer `C` makes @astrojs/check emit
+           "Could not find name 'C'. Did you mean 'c'?" three times on every run, and
+           npm run check is a CI gate — three standing hints train people to ignore it. */
+        role.capabilities.map((cap) => {
           /* The visually-hidden "(new)" is not decoration: freshness is otherwise
              encoded only in border and text colour, which fails 1.4.1 for low-vision
              sighted users as well as being invisible to AT. */
           const state = k === i ? C.fresh : C.stale;
           const flag = k === i ? '<span class="sr-only"> (new)</span>' : '';
-          return `<li class="${C.chip} ${state}">${esc(c)}${flag}</li>`;
+          return `<li class="${C.chip} ${state}">${esc(cap)}${flag}</li>`;
         })
       ).join('');
     }
