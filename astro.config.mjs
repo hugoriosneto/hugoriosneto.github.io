@@ -5,7 +5,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   site: 'https://hugoriosneto.github.io',
   trailingSlash: 'ignore',
-  integrations: [sitemap()],
+  integrations: [sitemap({ filter: (page) => !page.endsWith('/og/') })],
   vite: { plugins: [tailwindcss()] },
   redirects: {
     '/papers': '/research',

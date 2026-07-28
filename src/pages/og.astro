@@ -1,0 +1,27 @@
+---
+import '../styles/global.css';
+/* Not a real page: rendered once at 1200x630 and screenshotted into public/img/og.png.
+   `sitemap: false` keeps it out of the index; nothing links to it. */
+export const prerender = true;
+---
+<html lang="en">
+  <head><meta charset="utf-8" /><title>og</title>
+    <meta name="robots" content="noindex" />
+  </head>
+  <body class="m-0">
+    <div class="flex h-[630px] w-[1200px] flex-col justify-between bg-[var(--bg)] px-20 py-16">
+      <div class="flex h-[6px] w-40">
+        <i class="flex-[2] bg-[var(--accfill)]"></i><i class="flex-1 bg-[#FEDD00]"></i><i class="flex-[1.4] bg-[var(--acc2)]"></i>
+      </div>
+      <div class="font-serif text-[46px] leading-[1.25] tracking-[-0.02em] text-[var(--ink)]">
+        <span class="block">Brazil's <span class="highlight">first</span> club analytics department.</span>
+        <span class="block">Its <span class="highlight">first</span> sports analytics lab.</span>
+        <span class="block">Its <span class="highlight">first</span> football analytics conference.</span>
+      </div>
+      <div class="border-t-4 border-[var(--ink)] pt-6">
+        <div class="text-[34px] font-semibold tracking-tight text-[var(--ink)]">Hugo Rios-Neto</div>
+        <div class="mt-1 text-[22px] text-[var(--dim)]">Data Recruitment Lead, RSC Anderlecht</div>
+      </div>
+    </div>
+  </body>
+</html>
