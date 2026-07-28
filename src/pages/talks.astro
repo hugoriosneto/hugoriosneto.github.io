@@ -1,0 +1,43 @@
+---
+import Base from '../layouts/Base.astro';
+import TalkCard from '../components/TalkCard.astro';
+import { getCollection } from 'astro:content';
+
+const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.data.order);
+---
+<Base title="Talks & media — Hugo Rios-Neto" description="Conference talks, podcasts and webinars in English and Portuguese." current="talks">
+  <h1 class="pt-12 font-serif text-3xl font-normal tracking-tight">Talks &amp; media</h1>
+  <p class="mb-8 mt-1 max-w-[56ch] text-sm leading-relaxed text-[var(--dim)]">
+    Conference talks, podcasts and webinars — in English and Portuguese. Nothing loads from
+    YouTube, Vimeo or Spotify until you ask for it.
+  </p>
+  <div class="grid gap-4 pb-6 sm:grid-cols-2">
+    {talks.map((t) => <TalkCard talk={t.data} />)}
+  </div>
+</Base>
+
+<script is:inline>
+  document.querySelectorAll('.talk-frame').forEach((frame) => {
+    frame.addEventListener('click', (ev) => {
+      const src = frame.getAttribute('data-embed');
+      if (!src) return;
+      /* Only now do we take over the navigation. Without the script the same element is
+         an ordinary link to the provider. Modified clicks fall through so "open in new
+         tab" still works. */
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
+      ev.preventDefault();
+      const iframe = document.createElement('iframe');
+      iframe.src = src;
+      iframe.width = '100%';
+      iframe.height = '100%';
+      iframe.loading = 'lazy';
+      iframe.setAttribute('allowfullscreen', '');
+      // Spotify needs encrypted-media or playback fails in Chrome; its own embed
+      // snippet ships this list.
+      iframe.setAttribute('allow', 'autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      iframe.style.border = '0';
+      frame.replaceChildren(iframe);
+    });
+  });
+</script>

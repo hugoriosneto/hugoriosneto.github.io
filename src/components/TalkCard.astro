@@ -1,0 +1,27 @@
+---
+const { talk } = Astro.props;
+const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]';
+---
+<article data-testid="talk-card" class="overflow-hidden rounded-xl border border-[var(--cardline)] bg-[var(--card)]">
+  <!-- An <a> to the canonical watch page, not a <button>. With scripts off the earlier
+       version rendered six posters that never loaded and left no link to any of the media
+       the page exists to surface — and the embedUrl is a player URL, so it was not
+       recoverable by hand either. The script calls preventDefault() and swaps in the
+       iframe; without it, the poster is simply a link that opens the talk. -->
+  <a class="talk-frame flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 bg-[var(--poster)] no-underline"
+     href={talk.url} data-embed={talk.embedUrl} target="_blank" rel="noopener"
+     aria-label={`Watch ${talk.title} on ${talk.provider}`}>
+    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
+    <span class="text-xs text-[var(--dim)]">play here, or open on {talk.provider}</span>
+  </a>
+  <div class="p-4">
+    <h3 class="text-[0.9rem] font-semibold leading-snug">{talk.title}</h3>
+    <p class="mt-1 text-xs leading-relaxed text-[var(--faint)]">{talk.description}</p>
+    <div class="mt-2.5 flex flex-wrap gap-1.5">
+      {talk.award && <span class="rounded-full border border-[var(--award-line)] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--award-fg)]">{talk.award}</span>}
+      <span class={tag}>{talk.language}</span>
+      <span class={tag}>{talk.format}</span>
+      {talk.credit && <span class={tag}>{talk.credit}</span>}
+    </div>
+  </div>
+</article>
