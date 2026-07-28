@@ -1,0 +1,92 @@
+---
+import { getCollection } from 'astro:content';
+import SectionHead from './SectionHead.astro';
+
+const roles = (await getCollection('roles')).sort((a, b) => a.data.order - b.data.order);
+const data = roles.map((r) => r.data);
+const last = data.length - 1;
+---
+<section class="border-t border-[var(--hair)] py-12">
+  <SectionHead kicker="Trajectory" sub="click through — what each role added stays on screen" />
+
+  <div class="relative mb-1 h-10" data-testid="trajectory-rail">
+    <div class="absolute left-2 right-2 top-[19px] h-0.5 bg-[var(--hair2)]"></div>
+    <div id="traj-progress" class="absolute left-2 top-[19px] h-0.5 transition-[width] duration-500"
+         style="background:linear-gradient(90deg,var(--accfill),#FEDD00)"></div>
+    {data.map((r, i) => (
+      <button type="button"
+              class="traj-stop absolute top-2.5 -ml-2.5 h-5 w-5 rounded-full border-2 border-[var(--hair2)] bg-[var(--card)] transition-transform duration-200 hover:border-[var(--acc)]"
+              style={`left:${r.position}%`}
+              data-index={i}
+              aria-label={`${r.org}, ${r.dates}`}
+              aria-current={i === last ? 'true' : 'false'}></button>
+    ))}
+  </div>
+
+  <div class="mb-7 flex justify-between text-xs text-[var(--faint)]">
+    <span>2021</span><span>2023</span><span>2025</span><span>now</span>
+  </div>
+
+  <div class="grid gap-8 md:grid-cols-[1.15fr_1fr]">
+    <div data-testid="trajectory-detail"></div>
+    <div>
+      <div class="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">What it added</div>
+      <ul data-testid="trajectory-chips" class="m-0 flex list-none flex-wrap gap-1.5 p-0"></ul>
+    </div>
+  </div>
+</section>
+
+<script is:inline define:vars={{ data }}>
+  (() => {
+    // Content comes from YAML and is interpolated into innerHTML below. Nothing in
+    // the data needs markup, so escape it rather than trusting future entries.
+    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const stops = Array.from(document.querySelectorAll('.traj-stop'));
+    const detail = document.querySelector('[data-testid="trajectory-detail"]');
+    const chips = document.querySelector('[data-testid="trajectory-chips"]');
+    const progress = document.getElementById('traj-progress');
+    if (!stops.length || !detail || !chips || !progress) return;
+
+    function select(i) {
+      stops.forEach((el, j) => {
+        el.setAttribute('aria-current', j === i ? 'true' : 'false');
+        el.classList.toggle('scale-125', j === i);
+        el.style.background = j === i ? 'var(--accfill)' : 'var(--card)';
+        el.style.borderColor = j <= i ? 'var(--acc)' : 'var(--hair2)';
+      });
+      progress.style.width = `calc(${data[i].position}% - 8px)`;
+
+      const r = data[i];
+      detail.innerHTML =
+        `<div class="text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]">${esc(r.verb)}</div>` +
+        `<div class="text-2xl font-semibold tracking-tight">${esc(r.org)}</div>` +
+        `<div class="mb-2 text-sm font-semibold text-[var(--acc)]">${esc(r.title)} · ${esc(r.dates)}</div>` +
+        `<p class="max-w-[46ch] leading-relaxed text-[var(--dim)]">${esc(r.blurb)}</p>`;
+
+      chips.innerHTML = data.slice(0, i + 1).flatMap((role, k) =>
+        role.capabilities.map((c) => {
+          const fresh = k === i
+            ? 'border-[var(--acc)] text-[var(--acc)] font-semibold'
+            : 'border-[var(--cardline)] text-[var(--dim)]';
+          return `<li class="rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs ${fresh}">${esc(c)}</li>`;
+        })
+      ).join('');
+    }
+
+    stops.forEach((el, i) => {
+      el.addEventListener('click', () => select(i));
+      el.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        const next = e.key === 'ArrowRight'
+          ? Math.min(i + 1, stops.length - 1)
+          : Math.max(i - 1, 0);
+        stops[next].focus();
+        select(next);
+      });
+    });
+
+    select(stops.length - 1);
+  })();
+</script>
