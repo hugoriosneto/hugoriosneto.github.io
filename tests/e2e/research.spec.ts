@@ -9,8 +9,7 @@ test('lists all four papers newest first', async ({ page }) => {
 test('a paper row expands to show authors and links', async ({ page }) => {
   await page.goto('/research');
   const row = page.getByTestId('paper-gabr');
-  // .first(): the author paragraph, not the nested BibTeX <pre> — the escaped BibTeX
-  // also contains "Ricardo Furbino" and both now share this row's testid.
+  // .first(): the escaped BibTeX <pre> in the same row also contains "Ricardo Furbino".
   await expect(row.getByText('Ricardo Furbino').first()).toBeHidden();
   await row.locator('summary').first().click();
   await expect(row.getByText('Ricardo Furbino').first()).toBeVisible();
@@ -28,7 +27,7 @@ test('the BibTeX entry is readable and copyable without JavaScript', async ({ br
   await row.locator('[data-bibtex-row] summary').click();
   await expect(row.locator('[data-bibtex-row] pre')).toContainText('@inproceedings{furbino2022generalized');
   // gabr's authors are Ricardo Furbino M. Nascimento and Hugo Rios-Neto — Wagner Meira
-  // Jr. never co-authored this one, so that string could never appear here.
+  // Jr. is on eniac23 and obso, not this paper.
   await expect(row.locator('[data-bibtex-row] pre')).toContainText('{Ricardo Furbino M. Nascimento}');
   // No copy button exists without JS — the script creates it, so nothing dead renders.
   await expect(row.getByRole('button', { name: 'Copy' })).toHaveCount(0);
@@ -36,10 +35,9 @@ test('the BibTeX entry is readable and copyable without JavaScript', async ({ br
 });
 
 test('copying twice does not strand the button label', async ({ page }) => {
-  // grantPermissions(['clipboard-write']) is Chromium-only — WebKit (the mobile
-  // project) rejects the permission name outright. The test is about the label's
-  // state machine, not real OS clipboard access, so stub it instead: portable, and
-  // deterministic across both projects.
+  // grantPermissions(['clipboard-write']) is Chromium-only — WebKit rejects the
+  // permission name outright. This test is about the label's state machine, not real
+  // OS clipboard access, so stub it: portable and deterministic on both projects.
   await page.addInitScript(() => {
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText: () => Promise.resolve() }, configurable: true,
@@ -50,8 +48,14 @@ test('copying twice does not strand the button label', async ({ page }) => {
   await row.locator('summary').first().click();
   await row.locator('[data-bibtex-row] summary').click();
   const btn = row.getByRole('button', { name: /Copy/ });
-  await btn.click();
-  await btn.click();
+
+  // Both clicks dispatched in-page, 50ms apart. Two Playwright .click() calls land
+  // ~1.8-2s apart, which is longer than the 1500ms auto-revert — so the second click
+  // always started after the first timer had already restored the label, and the test
+  // passed whether or not the bug was present. It has to land inside the window.
+  await btn.evaluate((b: HTMLButtonElement) =>
+    new Promise<void>((done) => { b.click(); setTimeout(() => { b.click(); done(); }, 50); }));
+
   // Capturing the label inside the handler meant the second click saved "Copied" as the
   // text to restore, leaving the button permanently mislabelled.
   await expect(btn).toHaveText('Copy', { timeout: 4000 });
