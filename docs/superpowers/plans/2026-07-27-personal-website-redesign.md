@@ -1672,11 +1672,16 @@ const links = [
 ---
 /* The kicker renders as a real <h2>, not a <span>. This component is used ten times
    across Tasks 11–16; as a span, a screen-reader user pressing H on the finished
-   homepage would get exactly one stop for the whole page. `as` exists for the rare
-   case where a section genuinely is not a heading. */
-interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string; as?: 'h2' | 'h3' | 'span' }
-const { kicker, sub, moreHref, moreLabel, as = 'h2' } = Astro.props;
-const Kicker = as;
+   homepage would get exactly one stop for the whole page. `tag` exists for the rare
+   case where a section genuinely is not a heading.
+
+   The prop is `tag`, not `as`: @astrojs/check 0.9.10 fails to link Astro.props back to
+   the Props interface when a prop is literally named `as`, and emits a spurious
+   "'Props' is declared but never used" hint on every run. Reproduced and isolated —
+   any other name clears it. */
+interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string; tag?: 'h2' | 'h3' | 'span' }
+const { kicker, sub, moreHref, moreLabel, tag = 'h2' } = Astro.props;
+const Kicker = tag;
 ---
 <div class="mb-6 flex flex-wrap items-baseline gap-3">
   <Kicker class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</Kicker>
@@ -1906,18 +1911,33 @@ test('the highlighter survives print and forced-colors', async ({ page }) => {
 
 test('no sentence in the h1 ends on a one-word orphan', async ({ page }) => {
   await page.goto('/');
-  // max-w-[23ch] produces an identical wrap from 414px to 1440px, so an orphan here
-  // is an orphan at every desktop width, not an edge case.
+  // max-w-[23ch] produces an identical wrap from 414px to 1440px, so an orphan here is
+  // an orphan at every desktop width, not an edge case.
+  //
+  // Counting lines via Range.getClientRects() over the whole span does NOT work: it
+  // returns one rect per DOM fragment, not per visual line, and every sentence contains
+  // a nested <span class="highlight">. A five-word sentence yields five rects and the
+  // ratio computes to 1 regardless of how it actually wraps. So walk word by word and
+  // group by the top edge instead, then count the words sharing the lowest line.
   const worst = await page.locator('h1 > span.block').evaluateAll((spans) =>
-    Math.min(...spans.map((s) => {
-      const r = document.createRange();
-      r.selectNodeContents(s);
-      const lines = r.getClientRects().length;
-      if (lines < 2) return 99;
-      const words = (s.textContent || '').trim().split(/\s+/);
-      return words.length / lines;
+    Math.min(...spans.map((span) => {
+      const tops: number[] = [];
+      const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+      let node: Node | null;
+      while ((node = walker.nextNode())) {
+        const text = node.textContent || '';
+        for (const m of text.matchAll(/\S+/g)) {
+          const r = document.createRange();
+          r.setStart(node, m.index!);
+          r.setEnd(node, m.index! + m[0].length);
+          tops.push(r.getBoundingClientRect().top);
+        }
+      }
+      if (!tops.length) return 99;
+      const lastTop = Math.max(...tops);
+      return tops.filter((t) => Math.abs(t - lastTop) < 2).length;
     })));
-  expect(worst, 'a sentence in the h1 wraps to a single trailing word').toBeGreaterThan(1.5);
+  expect(worst, 'a sentence in the h1 ends on a single stranded word').toBeGreaterThan(1);
 });
 
 test('page states no ambition or forward-looking claim', async ({ page }) => {
