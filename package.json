@@ -9,7 +9,8 @@
     "preview": "astro preview --port 4322",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "astro check"
+    "check": "astro check",
+    "lighthouse": "lhci autorun"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.3.0",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
     "@axe-core/playwright": "^4.10.1",
+    "@lhci/cli": "^0.14.0",
     "@playwright/test": "^1.52.0",
     "@tailwindcss/vite": "^4.1.4",
     "tailwindcss": "^4.1.4",
