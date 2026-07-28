@@ -3,6 +3,7 @@
   description: Stats Perform, March 2023, with Maaike Van Roy, Wagner Meira Jr. and Jesse Davis.
   provider: vimeo
   embedUrl: https://player.vimeo.com/video/819432708?h=1ac4fd9fb4&title=0&byline=0&portrait=0
+  url: https://vimeo.com/819432708
   language: EN
   format: Conference
   award: Winner
@@ -13,6 +14,7 @@
   description: Podcast I host with Caio Batatinha, for Footure, on the current and future state of football analytics.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/videoseries?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
+  url: https://www.youtube.com/playlist?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
   language: PT
   format: Podcast
   credit: Host
@@ -23,6 +25,7 @@
   description: Co-host of the February 2024 episode, with Jesse Davis as the guest.
   provider: spotify
   embedUrl: https://open.spotify.com/embed/episode/5XGkEVHPcN7hxFQZiwrZeE?si=404dbca0dadd4b65
+  url: https://open.spotify.com/episode/5XGkEVHPcN7hxFQZiwrZeE
   language: EN
   format: Podcast
   credit: Co-host
@@ -33,6 +36,7 @@
   description: FC Barcelona, June 2021 — opening a webinar series promoting the 2021 Sports Tomorrow Congress.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/JC38450JDlc
+  url: https://www.youtube.com/watch?v=JC38450JDlc
   language: EN
   format: Webinar
   order: 4
@@ -42,6 +46,7 @@
   description: Invited to a Footstats YouTube live, March 2022.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/BtLmS6IDsHk
+  url: https://www.youtube.com/watch?v=BtLmS6IDsHk
   language: PT
   format: Live
   order: 5
@@ -51,6 +56,7 @@
   description: FC Barcelona, November 2020 — presenting the off-ball scoring opportunity work.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/MyqzmCHs_iw
+  url: https://www.youtube.com/watch?v=MyqzmCHs_iw
   language: EN
   format: Conference
   order: 6

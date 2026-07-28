@@ -50,7 +50,7 @@ const TEXT_TOKENS = ['ink', 'dim', 'faint', 'acc', 'acc2'] as const;
 const CLASSIFIED = {
   surface: ['bg', 'card', 'hair', 'hair2', 'cardline'],
   text: [...TEXT_TOKENS, 'award-fg'],
-  fill: ['accfill', 'mark', 'award-line'],
+  fill: ['accfill', 'mark', 'award-line', 'poster'],
   nonColour: ['font-display', 'font-body'],
 };
 

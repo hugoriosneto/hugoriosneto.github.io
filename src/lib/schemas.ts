@@ -46,12 +46,17 @@ export const paperSchema = z.object({
 });
 
 const EMBED_HOSTS = { youtube: 'www.youtube.com', vimeo: 'player.vimeo.com', spotify: 'open.spotify.com' };
+/* The canonical watch page, which is a different host from the player for Vimeo. Without
+   it the talks page has no <a> anywhere: with scripts off it renders six posters that
+   never load and no way to reach any of the media it exists to surface. */
+const WATCH_HOSTS = { youtube: 'www.youtube.com', vimeo: 'vimeo.com', spotify: 'open.spotify.com' };
 
 export const talkSchema = z.object({
   title: z.string(),
   description: z.string(),
   provider: z.enum(['youtube', 'vimeo', 'spotify']),
   embedUrl: z.string().url().startsWith('https://'),
+  url: z.string().url().startsWith('https://'),
   language: z.enum(['EN', 'PT']),
   format: z.enum(['Conference', 'Podcast', 'Webinar', 'Live']),
   award: z.string().optional(),
@@ -62,6 +67,9 @@ export const talkSchema = z.object({
 }).refine((t) => EMBED_HOSTS[t.provider] === new URL(t.embedUrl).host, {
   message: 'embedUrl host must match provider — this value goes straight into iframe.src.',
   path: ['embedUrl'],
+}).refine((t) => WATCH_HOSTS[t.provider] === new URL(t.url).host, {
+  message: 'url must be the canonical watch page on the provider’s own host.',
+  path: ['url'],
 });
 
 export const fameSchema = z.object({

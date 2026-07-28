@@ -62,6 +62,7 @@ describe('talkSchema', () => {
   const valid = {
     title: 'Opta Pro Forum', description: 'Algorithm Track.',
     provider: 'vimeo', embedUrl: 'https://player.vimeo.com/video/819432708',
+    url: 'https://vimeo.com/819432708',
     language: 'EN', format: 'Conference', order: 1,
   };
 

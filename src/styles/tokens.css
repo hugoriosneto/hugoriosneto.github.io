@@ -23,6 +23,9 @@
   --award-fg: #7a5f00;
   --award-line: #d9bb45;
 
+  /* Talk poster surface. A literal here too would sit outside the tested set. */
+  --poster: #ece0b8;
+
   /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
      declares those same two names, so `--font-sans: var(--font-sans)` would be a
      self-reference that only resolves by cascade accident (unlayered beats
