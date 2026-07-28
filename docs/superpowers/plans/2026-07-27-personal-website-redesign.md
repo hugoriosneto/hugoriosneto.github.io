@@ -575,9 +575,23 @@ html {
 
 /* Hero only. The 60% stop is coupled to font size: at display size it reads as a
    highlighter, at body size the band falls below the baseline and reads as a thick
-   underline. Do not reuse this at body size. */
+   underline. Do not reuse this at body size.
+
+   The emphasis rides entirely on a background gradient, and two standard rendering
+   modes strip backgrounds: Chrome's print default (Background graphics unchecked)
+   and Windows High Contrast. Without these two lines the three "first" marks vanish
+   silently, leaving three plain sentences and no trace of the site's central device.
+   Verified against a rasterised PDF and forcedColors: active. */
 .highlight {
   background: linear-gradient(transparent 60%, var(--mark) 60%);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+@media (forced-colors: active) {
+  .highlight {
+    forced-color-adjust: none;
+    border-bottom: 0.32em solid Highlight;
+  }
 }
 
 /* Shown only on paper. The CV's name and contact details live in the nav and footer,
@@ -1656,11 +1670,16 @@ const links = [
 
 ```astro
 ---
-interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string }
-const { kicker, sub, moreHref, moreLabel } = Astro.props;
+/* The kicker renders as a real <h2>, not a <span>. This component is used ten times
+   across Tasks 11–16; as a span, a screen-reader user pressing H on the finished
+   homepage would get exactly one stop for the whole page. `as` exists for the rare
+   case where a section genuinely is not a heading. */
+interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string; as?: 'h2' | 'h3' | 'span' }
+const { kicker, sub, moreHref, moreLabel, as = 'h2' } = Astro.props;
+const Kicker = as;
 ---
 <div class="mb-6 flex flex-wrap items-baseline gap-3">
-  <span class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</span>
+  <Kicker class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</Kicker>
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
     <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}>
@@ -1675,6 +1694,14 @@ const { kicker, sub, moreHref, moreLabel } = Astro.props;
 ```astro
 ---
 import '../styles/global.css';
+/* Preloaded, not merely self-hosted. Fontsource ships font-display: swap, so without
+   these the h1 first paints in Georgia and reflows 73px narrower and 47px taller when
+   Source Serif arrives — a single layout shift measuring CLS 0.12–0.18 cold, against
+   Task 19's ≥95 Lighthouse gate and Google's 0.10 "good" threshold. Preloading these
+   two latin subsets (the only two a browser actually fetches) measured 0.10 → 0.00.
+   Imported for their hashed URLs; the @font-face rules still come from global.css. */
+import interWoff2 from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import serifWoff2 from '@fontsource-variable/source-serif-4/files/source-serif-4-latin-wght-normal.woff2?url';
 import Nav from '../components/Nav.astro';
 import Footer from '../components/Footer.astro';
 import TricolourRule from '../components/TricolourRule.astro';
@@ -1710,6 +1737,8 @@ const person = {
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" as="font" type="font/woff2" href={serifWoff2} crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href={interWoff2} crossorigin />
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -1851,9 +1880,44 @@ test('hero highlights exactly three words', async ({ page }) => {
 test('identity legend links to SALab, FAME and MLSA', async ({ page }) => {
   await page.goto('/');
   const legend = page.getByTestId('legend');
-  await expect(legend.getByRole('link', { name: 'SALab' })).toHaveAttribute('href', 'https://salabufmg.github.io/');
-  await expect(legend.getByRole('link', { name: 'FAME' })).toHaveAttribute('href', 'https://salabufmg.github.io/FAME26/');
+  // Substring matches: each link carries an aria-label expanding the acronym, so the
+  // accessible name is longer than the visible text.
+  await expect(legend.getByRole('link', { name: /^SALab/ })).toHaveAttribute('href', 'https://salabufmg.github.io/');
+  await expect(legend.getByRole('link', { name: /^FAME/ })).toHaveAttribute('href', 'https://salabufmg.github.io/FAME26/');
   await expect(legend.getByRole('link', { name: /MLSA/ })).toHaveAttribute('href', /dtai\.cs\.kuleuven\.be/);
+});
+
+test('the highlighter survives print and forced-colors', async ({ page }) => {
+  await page.goto('/');
+  // The emphasis is a background gradient, and both of these modes strip backgrounds
+  // by default — leaving three plain sentences with no trace of the site's central
+  // device, and no error anywhere.
+  await page.emulateMedia({ media: 'print' });
+  const printAdjust = await page.locator('.highlight').first()
+    .evaluate((el) => getComputedStyle(el).printColorAdjust || (getComputedStyle(el) as any).webkitPrintColorAdjust);
+  expect(printAdjust).toBe('exact');
+
+  await page.emulateMedia({ media: 'screen', forcedColors: 'active' });
+  const forced = await page.locator('.highlight').first()
+    .evaluate((el) => getComputedStyle(el).borderBottomWidth);
+  expect(parseFloat(forced)).toBeGreaterThan(0);
+  await page.emulateMedia({ media: 'screen', forcedColors: 'none' });
+});
+
+test('no sentence in the h1 ends on a one-word orphan', async ({ page }) => {
+  await page.goto('/');
+  // max-w-[23ch] produces an identical wrap from 414px to 1440px, so an orphan here
+  // is an orphan at every desktop width, not an edge case.
+  const worst = await page.locator('h1 > span.block').evaluateAll((spans) =>
+    Math.min(...spans.map((s) => {
+      const r = document.createRange();
+      r.selectNodeContents(s);
+      const lines = r.getClientRects().length;
+      if (lines < 2) return 99;
+      const words = (s.textContent || '').trim().split(/\s+/);
+      return words.length / lines;
+    })));
+  expect(worst, 'a sentence in the h1 wraps to a single trailing word').toBeGreaterThan(1.5);
 });
 
 test('page states no ambition or forward-looking claim', async ({ page }) => {
@@ -1880,10 +1944,14 @@ const legendLinks = {
 const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:border-[var(--acc)]';
 ---
 <section data-testid="hero" class="py-16">
+  <!-- text-balance on each sentence: without it max-w-[23ch] produces the identical
+       wrap at every width from 414px to 1440px, leaving a one-word orphan on all three
+       lines — one of them the four-character "lab." Balanced, each sentence breaks as
+       "Brazil's first club / analytics department." at every width. -->
   <h1 class="mb-6 max-w-[23ch] font-serif text-[clamp(1.9rem,5vw,2.35rem)] font-normal leading-[1.24] tracking-[-0.022em]">
-    <span class="block">Brazil's <span class="highlight">first</span> club analytics department.</span>
-    <span class="block">Its <span class="highlight">first</span> sports analytics lab.</span>
-    <span class="block">Its <span class="highlight">first</span> football analytics conference.</span>
+    <span class="block text-balance">Brazil's <span class="highlight">first</span> club analytics department.</span>
+    <span class="block text-balance">Its <span class="highlight">first</span> sports analytics lab.</span>
+    <span class="block text-balance">Its <span class="highlight">first</span> football analytics conference.</span>
   </h1>
 
   <p class="mb-8 max-w-[56ch] text-[1.02rem] leading-[1.66] text-[var(--dim)]">
@@ -1894,13 +1962,22 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
 
   <div class="max-w-[56ch] border-t-2 border-[var(--ink)] pt-4">
     <div class="mb-1 text-lg font-semibold tracking-tight">Hugo Rios-Neto</div>
+    <!-- Separators use --faint, not --hair2: the latter is 1.39:1 on cream, effectively
+         invisible, and these are the only marks dividing the three role clauses.
+         aria-label on each link because a screen-reader user listing links otherwise
+         hears three bare acronyms with no role and no expansion — the visible
+         "Co-founder," is not part of the accessible name.
+         Non-breaking hyphen in Co&#8209;organizer: it was breaking after the hyphen. -->
     <p data-testid="legend" class="text-sm leading-[1.7] text-[var(--dim)]">
       Data Recruitment Lead, RSC Anderlecht
-      <span class="mx-2 text-[var(--hair2)]">·</span>
-      Co-founder, <a class={a} href={legendLinks.salab} target="_blank" rel="noopener">SALab</a>
-      &amp; <a class={a} href={legendLinks.fame} target="_blank" rel="noopener">FAME</a>
-      <span class="mx-2 text-[var(--hair2)]">·</span>
-      Co-organizer, <a class={a} href={legendLinks.mlsa} target="_blank" rel="noopener">MLSA @ ECML/PKDD</a>
+      <span class="mx-2 text-[var(--faint)]" aria-hidden="true">·</span>
+      Co-founder, <a class={a} href={legendLinks.salab} target="_blank" rel="noopener"
+         aria-label="SALab — Sports Analytics Lab at UFMG">SALab</a>
+      &amp; <a class={a} href={legendLinks.fame} target="_blank" rel="noopener"
+         aria-label="FAME — Football Analytics: Modeling and Experience">FAME</a>
+      <span class="mx-2 text-[var(--faint)]" aria-hidden="true">·</span>
+      Co&#8209;organizer, <a class={a} href={legendLinks.mlsa} target="_blank" rel="noopener"
+         aria-label="MLSA — Machine Learning and Data Mining for Sports Analytics, at ECML/PKDD">MLSA @ ECML/PKDD</a>
     </p>
   </div>
 </section>
@@ -1913,7 +1990,7 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
 import Base from '../layouts/Base.astro';
 import Hero from '../components/Hero.astro';
 ---
-<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first football analytics conference." current="home">
+<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first conference." current="home">
   <Hero />
 </Base>
 ```
@@ -1921,7 +1998,7 @@ import Hero from '../components/Hero.astro';
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `npx playwright test tests/e2e/home.spec.ts --project=desktop`
-Expected: `4 passed`.
+Expected: `6 passed`.
 
 - [ ] **Step 6: Commit**
 
@@ -2119,7 +2196,7 @@ import Base from '../layouts/Base.astro';
 import Hero from '../components/Hero.astro';
 import Trajectory from '../components/Trajectory.astro';
 ---
-<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first football analytics conference." current="home">
+<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first conference." current="home">
   <Hero />
   <Trajectory />
 </Base>
@@ -2204,7 +2281,7 @@ const extraResearch = [
 const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.data.order).slice(0, 3);
 const fame = await getCollection('fame');
 ---
-<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first football analytics conference." current="home">
+<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first conference." current="home">
   <Hero />
   <Trajectory />
 
