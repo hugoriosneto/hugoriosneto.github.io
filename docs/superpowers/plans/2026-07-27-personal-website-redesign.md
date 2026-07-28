@@ -499,11 +499,15 @@ describe('design tokens', () => {
     expect(contrastRatio('#ffffff', token('accfill'))).toBeLessThan(4.5);
   });
 
-  it('keeps the award badge legible on its own fill', () => {
-    // The badge fill composites flag yellow at 30% over cream. Checked explicitly
-    // because --award-fg sits on neither --bg nor --card.
-    const badgeFill = composite('rgba(254, 221, 0, 0.3)', token('bg'));
-    expect(contrastRatio(token('award-fg'), badgeFill)).toBeGreaterThanOrEqual(4.5);
+  it('keeps the award badge legible on its own fill, on both surfaces it sits on', () => {
+    // Flag yellow at 30%, composited over whichever surface is behind it: --bg on the
+    // homepage teaser, --card inside a talk card. Both are checked because the badge
+    // renders on both and --award-fg sits on neither directly.
+    for (const surface of ['bg', 'card'] as const) {
+      const badgeFill = composite('rgba(254, 221, 0, 0.3)', token(surface));
+      expect(contrastRatio(token('award-fg'), badgeFill),
+        `award badge over --${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it('keeps white legible on the two fills that do carry text', () => {
@@ -528,7 +532,7 @@ describe('design tokens', () => {
 - [ ] **Step 7: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/tokens.test.ts`
-Expected: `16 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the award badge on its own fill, the highlighter composite, and the exhaustive classification check.
+Expected: `17 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the award badge on its own fill, the highlighter composite, and the exhaustive classification check.
 
 The last four exist because the first draft of this suite tested only one axis — text token against surface token — and that blind spot let a real WCAG 1.4.3 failure into Task 17, where a `text-white` button sat on `--accfill` at 3.83:1.
 
@@ -849,6 +853,9 @@ describe('talkSchema', () => {
   const valid = {
     title: 'Opta Pro Forum', description: 'Algorithm Track.',
     provider: 'vimeo', embedUrl: 'https://player.vimeo.com/video/819432708',
+    // vimeo.com, not player.vimeo.com — the watch host differs from the player host,
+    // which is the whole reason WATCH_HOSTS exists separately.
+    url: 'https://vimeo.com/819432708',
     language: 'EN', format: 'Conference', order: 1,
   };
 
@@ -862,6 +869,12 @@ describe('talkSchema', () => {
 
   it('rejects a non-https embed', () => {
     expect(() => talkSchema.parse({ ...valid, embedUrl: 'http://insecure.test/x' })).toThrow();
+  });
+
+  it('rejects a watch url on the wrong host', () => {
+    // player.vimeo.com is the embed host, not a page a human can open.
+    expect(() => talkSchema.parse({ ...valid, url: 'https://player.vimeo.com/video/819432708' })).toThrow();
+    expect(() => talkSchema.parse({ ...valid, url: 'https://evil.test/watch' })).toThrow();
   });
 
   it('rejects an embed whose host does not match its provider', () => {
@@ -1000,7 +1013,7 @@ export const fameSchema = z.object({
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/content-schema.test.ts`
-Expected: `17 passed` — 6 role, 3 paper, 4 talk, 4 FAME.
+Expected: `18 passed` — 6 role, 3 paper, 5 talk, 4 FAME.
 
 - [ ] **Step 5: Wire the collections in `src/content.config.ts`**
 
@@ -3260,6 +3273,9 @@ test('lists all six talks', async ({ page }) => {
 
 test('loads no iframes until a card is clicked', async ({ page }) => {
   await page.goto('/talks');
+  // The card assertion first: on its own, "no iframes" passes against a 404 page just as
+  // happily as against a correct one.
+  await expect(page.getByTestId('talk-card')).toHaveCount(6);
   await expect(page.locator('iframe')).toHaveCount(0);
 });
 
@@ -3292,6 +3308,8 @@ test('makes no third-party requests before a click', async ({ page }) => {
   });
   await page.goto('/talks');
   await page.waitForLoadState('networkidle');
+  // Same reasoning: a 404 also makes no third-party requests.
+  await expect(page.getByTestId('talk-card')).toHaveCount(6);
   expect(external).toEqual([]);
 });
 
