@@ -532,7 +532,7 @@ describe('design tokens', () => {
 - [ ] **Step 7: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/tokens.test.ts`
-Expected: `17 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the award badge on its own fill, the highlighter composite, and the exhaustive classification check.
+Expected: `16 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the award badge on its own fill, the highlighter composite, and the exhaustive classification check.
 
 The last four exist because the first draft of this suite tested only one axis — text token against surface token — and that blind spot let a real WCAG 1.4.3 failure into Task 17, where a `text-white` button sat on `--accfill` at 3.83:1.
 
@@ -3445,8 +3445,77 @@ Old post URLs redirect to the homepage (Task 1's `redirects` map, verified by Ta
 ### Task 17: CV page
 
 **Files:**
-- Create: `src/pages/cv.astro`
+- Create: `src/lib/facts.ts`, `src/pages/cv.astro`
+- Modify: `src/pages/research.astro`, `src/pages/index.astro`
 - Test: `tests/e2e/cv.spec.ts`
+
+- [ ] **Step 0: Give the repeated facts one home**
+
+The thesis title and the MLSA edition numbers are currently string literals in both
+`index.astro` and `research.astro`, and this task would make the CV a third copy. They
+agree today — verified — but nothing compares them, and spec §8 calls these "facts of
+record… confirmed by Hugo. These override anything in the existing repo." Facts of record
+deserve one home. Do this first, so the CV imports rather than restates.
+
+`src/lib/facts.ts`:
+```ts
+/* Spec §8 facts of record. Rendered on the homepage teaser, the research page and the CV
+   — three surfaces that previously held three independent copies with nothing comparing
+   them. Change a fact here and every surface follows. */
+export const thesis = {
+  title: 'Towards Learning Representations from Spatiotemporal Grids in Soccer',
+  degree: 'MSc, Computer Science',
+  institution: 'UFMG',
+  defended: 'February 2026',
+  supervisor: 'Wagner Meira Jr.',
+  coSupervisors: ['Jesse Davis', 'Adriano C. M. Pereira'],
+} as const;
+
+export const mlsa = {
+  name: 'Machine Learning & Data Mining for Sports Analytics',
+  edition: 13,
+  priorEdition: 12,
+  priorYear: 2025,
+  venue: 'ECML/PKDD',
+  city: 'Naples',
+  date: '7 September 2026',
+  organisers: ['Pieter Robberechts', 'Maaike Van Roy', 'Albrecht Zimmermann'],
+} as const;
+```
+
+Then replace the hardcoded strings in `src/pages/research.astro`:
+
+```astro
+import { thesis, mlsa } from '../lib/facts';
+...
+    <div data-testid="thesis" class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
+      <p class="font-serif text-lg leading-snug">{thesis.title}</p>
+      <p class="mt-1 text-sm text-[var(--acc)]">{thesis.degree} — {thesis.institution} · defended {thesis.defended}</p>
+      <p class="mt-2 text-sm text-[var(--dim)]">
+        Supervisor: {thesis.supervisor}. Co-supervisors: {thesis.coSupervisors.join(' and ')}.
+      </p>
+    </div>
+...
+    <div data-testid="service" class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
+      <p class="font-medium">Co-organizer — {mlsa.name}</p>
+      <p class="mt-1 text-sm text-[var(--acc)]">{mlsa.edition}th edition · {mlsa.venue} · {mlsa.city} · {mlsa.date}</p>
+      <p class="mt-2 text-sm text-[var(--dim)]">
+        With {mlsa.organisers.slice(0, -1).join(', ')} and {mlsa.organisers.at(-1)}. Second year as an
+        organizer, following the {mlsa.priorEdition}th edition in {mlsa.priorYear}.
+      </p>
+    </div>
+```
+
+and in `src/pages/index.astro`'s `extraResearch` array:
+
+```astro
+import { thesis, mlsa } from '../lib/facts';
+...
+const extraResearch = [
+  { title: `${thesis.degree} — thesis defended`, venue: `${thesis.institution} · ${thesis.defended}`, tag: 'Thesis' },
+  { title: `Co-organizer, ${mlsa.name}`, venue: `${mlsa.venue} · ${mlsa.city} · ${mlsa.edition}th edition`, tag: 'Service' },
+];
+```
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3525,6 +3594,7 @@ Expected: FAIL — `/cv` 404s.
 import Base from '../layouts/Base.astro';
 import SectionHead from '../components/SectionHead.astro';
 import { getCollection } from 'astro:content';
+import { thesis, mlsa } from '../lib/facts';
 
 const roles = (await getCollection('roles'))
   .sort((a, b) => b.data.order - a.data.order)
@@ -3535,11 +3605,13 @@ const founded = [
   { when: '2022 – now', role: 'Co-founder & organizer', org: 'FAME', note: "Brazil's first football analytics conference. Five editions." },
 ];
 const education = [
-  { when: 'defended 02/2026', role: 'MSc, Computer Science', org: 'UFMG', note: 'Towards Learning Representations from Spatiotemporal Grids in Soccer. Supervisor: Wagner Meira Jr. Co-supervisors: Jesse Davis and Adriano C. M. Pereira.' },
+  { when: 'defended 02/2026', role: thesis.degree, org: thesis.institution,
+    note: `${thesis.title}. Supervisor: ${thesis.supervisor}. Co-supervisors: ${thesis.coSupervisors.join(' and ')}.` },
   { when: '03/2018 – 08/2022', role: 'BSc, Computational Mathematics', org: 'UFMG', note: '' },
 ];
 const service = [
-  { when: '2025, 2026', role: 'Co-organizer', org: 'MLSA @ ECML/PKDD', note: '12th and 13th editions.' },
+  { when: `${mlsa.priorYear}, 2026`, role: 'Co-organizer', org: `MLSA @ ${mlsa.venue}`,
+    note: `${mlsa.priorEdition}th and ${mlsa.edition}th editions.` },
   { when: '2023', role: 'Winner, Algorithm Track', org: 'Opta Pro Forum', note: 'With Maaike Van Roy, Wagner Meira Jr. and Jesse Davis.' },
 ];
 ---
