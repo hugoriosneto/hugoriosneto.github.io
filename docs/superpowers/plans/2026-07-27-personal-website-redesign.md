@@ -3467,6 +3467,11 @@ export const thesis = {
   degree: 'MSc, Computer Science',
   institution: 'UFMG',
   defended: 'February 2026',
+  /* The CV's date column is numeric by convention (04/2021 – 07/2023), so it needs its
+     own rendering of the same fact. Both live here, or the CV silently stops following
+     a change — which is exactly what this module exists to prevent, and exactly what
+     happened when only `defended` existed. */
+  defendedShort: '02/2026',
   supervisor: 'Wagner Meira Jr.',
   coSupervisors: ['Jesse Davis', 'Adriano C. M. Pereira'],
 } as const;
@@ -3570,8 +3575,24 @@ test('SALab appears under Founded, never under Experience', async ({ page }) => 
 
 test('contains no trace of the old Einstein template', async ({ page }) => {
   await page.goto('/cv');
+  // A pure negative passes against a 404 as happily as against a correct page. Assert
+  // the CV actually rendered first, or this cannot tell "clean" from "absent".
+  await expect(page.getByTestId('cv-experience')).toContainText('RSC Anderlecht');
   const text = await page.locator('body').innerText();
   expect(text).not.toMatch(/Einstein|Nobel|Max Planck|Zurich/i);
+});
+
+test('every surface follows a change to the facts module', async ({ page }) => {
+  // Step 0's whole purpose. The thesis defence date is rendered in three places and in
+  // two formats; a sentinel check found /cv silently not following, because its date
+  // column was an independent literal.
+  await page.goto('/cv');
+  await expect(page.getByTestId('cv-education')).toContainText('02/2026');
+  await expect(page.getByTestId('cv-education')).toContainText('Towards Learning Representations');
+  await page.goto('/research');
+  await expect(page.getByTestId('thesis')).toContainText('February 2026');
+  await page.goto('/');
+  await expect(page.locator('body')).toContainText('February 2026');
 });
 
 test('lists both MLSA editions and the Opta win', async ({ page }) => {
@@ -3605,7 +3626,7 @@ const founded = [
   { when: '2022 – now', role: 'Co-founder & organizer', org: 'FAME', note: "Brazil's first football analytics conference. Five editions." },
 ];
 const education = [
-  { when: 'defended 02/2026', role: thesis.degree, org: thesis.institution,
+  { when: `defended ${thesis.defendedShort}`, role: thesis.degree, org: thesis.institution,
     note: `${thesis.title}. Supervisor: ${thesis.supervisor}. Co-supervisors: ${thesis.coSupervisors.join(' and ')}.` },
   { when: '03/2018 – 08/2022', role: 'BSc, Computational Mathematics', org: 'UFMG', note: '' },
 ];
@@ -3681,7 +3702,7 @@ const service = [
 - [ ] **Step 4: Run the test**
 
 Run: `npx playwright test tests/e2e/cv.spec.ts --project=desktop`
-Expected: `7 passed` — including the print-header check and the SALab-placement check, both added after review.
+Expected: `8 passed` — including the print-header check, the SALab-placement check, and the facts-module check.
 
 - [ ] **Step 5: Commit**
 
