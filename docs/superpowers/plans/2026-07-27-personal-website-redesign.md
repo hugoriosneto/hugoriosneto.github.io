@@ -1656,7 +1656,9 @@ const links = [
     <div class="font-semibold text-[var(--ink)]">Hugo Rios-Neto</div>
     <div class="text-sm text-[var(--faint)]">Data Recruitment Lead, RSC Anderlecht</div>
   </div>
-  <ul class="ml-auto flex flex-wrap gap-5 text-sm list-none p-0 m-0">
+  <!-- role="list": Tailwind's list-none sets list-style: none, which makes Safari drop
+       list semantics entirely, so VoiceOver would not announce this as a list. -->
+  <ul role="list" class="ml-auto flex flex-wrap gap-5 text-sm list-none p-0 m-0">
     {links.map((l) => (
       <li><a class="text-[var(--dim)] no-underline hover:text-[var(--acc)]"
              href={l.href} rel="me noopener" target="_blank">{l.label}</a></li>
@@ -2102,6 +2104,56 @@ test('marks the selected stop for assistive tech', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /Gemini/ }).click();
   await expect(page.getByRole('button', { name: /Gemini/ })).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('.traj-stop[aria-current="true"]')).toHaveCount(1);
+});
+
+test('announces the change and names the chip list', async ({ page }) => {
+  await page.goto('/');
+  // Without aria-live the panel changes silently behind a screen-reader user, which
+  // makes the site's signature interaction invisible without sight.
+  await expect(page.getByTestId('trajectory-detail')).toHaveAttribute('aria-live', 'polite');
+  await expect(page.getByTestId('trajectory-chips')).toHaveAttribute('aria-labelledby', 'traj-added');
+  await expect(page.getByRole('button', { name: /Gemini/ })).toHaveAttribute('aria-controls', 'traj-detail');
+});
+
+test('marks new chips with text, not only colour', async ({ page }) => {
+  await page.goto('/');
+  // Freshness was encoded only in border and text colour — WCAG 1.4.1, and invisible
+  // to assistive tech. The two Anderlecht chips are the new ones at the final stop.
+  await page.getByRole('button', { name: /RSC Anderlecht/ }).click();
+  await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(2);
+});
+
+test('Home and End jump to the ends of the rail', async ({ page }) => {
+  await page.goto('/');
+  const gemini = page.getByRole('button', { name: /Gemini/ });
+  await gemini.click();
+  await gemini.press('Home');
+  await expect(page.getByTestId('trajectory-detail')).toContainText('Atlético Mineiro');
+  await page.getByRole('button', { name: /Atlético Mineiro/ }).press('End');
+  await expect(page.getByTestId('trajectory-detail')).toContainText('RSC Anderlecht');
+});
+
+test('the play control walks through every stop', async ({ page }) => {
+  await page.goto('/');
+  // On touch there is no hover, so without this the interaction is "poke an unlabelled
+  // dot and hope". Spec §6 calls for it.
+  await page.getByRole('button', { name: /Play/ }).click();
+  await expect(page.getByTestId('trajectory-detail')).toContainText('Atlético Mineiro');
+  await expect(page.getByTestId('trajectory-detail')).toContainText('RSC Anderlecht', { timeout: 8000 });
+});
+
+test('the final stop is server-rendered, so it survives with JavaScript off', async ({ browser }) => {
+  // The script is is:inline, so this covers content blockers, any future CSP (Astro
+  // does not hash or nonce inline scripts) and crawlers that do not run JS —
+  // LinkedIn's preview bot among them, and spec §7 makes LinkedIn the de facto inbox.
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const p = await ctx.newPage();
+  await p.goto('/');
+  await expect(p.getByTestId('trajectory-detail')).toContainText('RSC Anderlecht');
+  await expect(p.getByTestId('trajectory-detail')).toContainText('Recruitment analytics');
+  await expect(p.getByTestId('trajectory-chips').locator('li')).toHaveCount(12);
+  await ctx.close();
 });
 ```
 
@@ -2112,6 +2164,13 @@ Expected: FAIL — no `trajectory-detail` element.
 
 - [ ] **Step 3: Create `src/components/Trajectory.astro`**
 
+Four things here are deliberate and were each got wrong in an earlier draft:
+
+- **The last stop is server-rendered.** With JS off, the earlier version showed 255px of empty scaffolding: a kicker, a dangling "What it added" label, five near-invisible dots and nothing else. The script is `is:inline`, so the realistic failure modes are narrow — but they include content blockers, any CSP added later (Astro does not hash or nonce `is:inline` scripts), and crawlers that do not execute JS. LinkedIn's preview bot is one of those, and spec §7 makes LinkedIn the de facto inbox. Rendering the final stop server-side also removes the last theoretical flash-of-empty-panel.
+- **Class strings live in one `C` object** shared by the server markup and the script's `innerHTML`, so the two cannot drift.
+- **Every dot border stays `--acc`.** Reverting unvisited dots to `--hair2` measured 1.39:1 — below 1.4.11's 3:1 — and the failure appeared only *after* the reader clicked an earlier stop, hiding exactly the controls needed to get back. Selected state is carried by fill and scale, which measure 3.76:1 against unselected.
+- **Two axis labels, not four.** Four `justify-between` labels landed at 1.5/34/66.5/98% while the dots are linear in time, putting the 2023 dot ~68px right of its own tick at 1280px. Two endpoints carry the same meaning without the false precision.
+
 ```astro
 ---
 import { getCollection } from 'astro:content';
@@ -2120,89 +2179,138 @@ import SectionHead from './SectionHead.astro';
 const roles = (await getCollection('roles')).sort((a, b) => a.data.order - b.data.order);
 const data = roles.map((r) => r.data);
 const last = data.length - 1;
+
+/* Shared by the server-rendered markup below and the script's innerHTML. */
+const C = {
+  verb: 'text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]',
+  org: 'text-2xl font-semibold tracking-tight',
+  role: 'mb-2 text-sm font-semibold text-[var(--acc)]',
+  blurb: 'max-w-[46ch] leading-relaxed text-[var(--dim)]',
+  chip: 'rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs',
+  fresh: 'border-[var(--acc)] font-semibold text-[var(--acc)]',
+  stale: 'border-[var(--cardline)] text-[var(--dim)]',
+};
 ---
 <section class="border-t border-[var(--hair)] py-12">
   <SectionHead kicker="Trajectory" sub="click through — what each role added stays on screen" />
 
+  <div class="mb-2 flex justify-end">
+    <!-- Discoverability: on touch there is no hover, so without this the interaction is
+         "poke an unlabelled dot and see what changes". Spec §6 calls for it. -->
+    <button type="button" id="traj-play"
+            class="rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--dim)] hover:border-[var(--acc)] hover:text-[var(--acc)]">
+      <span aria-hidden="true">▶</span> Play
+    </button>
+  </div>
+
   <div class="relative mb-1 h-10" data-testid="trajectory-rail">
     <div class="absolute left-2 right-2 top-[19px] h-0.5 bg-[var(--hair2)]"></div>
     <div id="traj-progress" class="absolute left-2 top-[19px] h-0.5 transition-[width] duration-500"
-         style="background:linear-gradient(90deg,var(--accfill),#FEDD00)"></div>
+         style={`background:linear-gradient(90deg,var(--accfill),#FEDD00);width:calc(${data[last].position}% - 8px)`}></div>
     {data.map((r, i) => (
       <button type="button"
-              class="traj-stop absolute top-2.5 -ml-2.5 h-5 w-5 rounded-full border-2 border-[var(--hair2)] bg-[var(--card)] transition-transform duration-200 hover:border-[var(--acc)]"
+              class={`traj-stop absolute top-2.5 -ml-2.5 h-5 w-5 rounded-full border-2 border-[var(--acc)] transition-transform duration-200 ${i === last ? 'scale-125 bg-[var(--accfill)]' : 'bg-[var(--card)]'}`}
               style={`left:${r.position}%`}
-              data-index={i}
+              aria-controls="traj-detail"
               aria-label={`${r.org}, ${r.dates}`}
               aria-current={i === last ? 'true' : 'false'}></button>
     ))}
   </div>
 
   <div class="mb-7 flex justify-between text-xs text-[var(--faint)]">
-    <span>2021</span><span>2023</span><span>2025</span><span>now</span>
+    <span>2021</span><span>now</span>
   </div>
 
   <div class="grid gap-8 md:grid-cols-[1.15fr_1fr]">
-    <div data-testid="trajectory-detail"></div>
+    <!-- aria-live so arrowing between stops announces the new role rather than changing
+         silently behind a screen-reader user. Not on the chip list — 12 items per change
+         would be unusable. -->
+    <div id="traj-detail" data-testid="trajectory-detail" aria-live="polite">
+      <div class={C.verb}>{data[last].verb}</div>
+      <div class={C.org}>{data[last].org}</div>
+      <div class={C.role}>{data[last].title} · {data[last].dates}</div>
+      <p class={C.blurb}>{data[last].blurb}</p>
+    </div>
     <div>
-      <div class="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">What it added</div>
-      <ul data-testid="trajectory-chips" class="m-0 flex list-none flex-wrap gap-1.5 p-0"></ul>
+      <h3 id="traj-added" class="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">What it added</h3>
+      <!-- role="list" because Tailwind's list-none sets list-style: none, which makes
+           Safari drop list semantics entirely. Same fix applies in Footer.astro. -->
+      <ul id="traj-chips" data-testid="trajectory-chips" role="list" aria-labelledby="traj-added"
+          class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+        {data.flatMap((role, k) => role.capabilities.map((c) => (
+          <li class={`${C.chip} ${k === last ? C.fresh : C.stale}`}>
+            {c}{k === last && <span class="sr-only"> (new)</span>}
+          </li>
+        )))}
+      </ul>
     </div>
   </div>
 </section>
 
-<script is:inline define:vars={{ data }}>
+<script is:inline define:vars={{ data, C, last }}>
   (() => {
-    // Content comes from YAML and is interpolated into innerHTML below. Nothing in
-    // the data needs markup, so escape it rather than trusting future entries.
+    /* Content comes from YAML and is interpolated into innerHTML below. Nothing in
+       the data needs markup, so escape it rather than trusting future entries. */
     const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const stops = Array.from(document.querySelectorAll('.traj-stop'));
-    const detail = document.querySelector('[data-testid="trajectory-detail"]');
-    const chips = document.querySelector('[data-testid="trajectory-chips"]');
+    /* Queried by id, not data-testid: a test hook must never be load-bearing for
+       production behaviour. */
+    const detail = document.getElementById('traj-detail');
+    const chips = document.getElementById('traj-chips');
     const progress = document.getElementById('traj-progress');
+    const play = document.getElementById('traj-play');
     if (!stops.length || !detail || !chips || !progress) return;
+    let timer = null;
 
     function select(i) {
       stops.forEach((el, j) => {
         el.setAttribute('aria-current', j === i ? 'true' : 'false');
         el.classList.toggle('scale-125', j === i);
         el.style.background = j === i ? 'var(--accfill)' : 'var(--card)';
-        el.style.borderColor = j <= i ? 'var(--acc)' : 'var(--hair2)';
       });
       progress.style.width = `calc(${data[i].position}% - 8px)`;
 
       const r = data[i];
       detail.innerHTML =
-        `<div class="text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]">${esc(r.verb)}</div>` +
-        `<div class="text-2xl font-semibold tracking-tight">${esc(r.org)}</div>` +
-        `<div class="mb-2 text-sm font-semibold text-[var(--acc)]">${esc(r.title)} · ${esc(r.dates)}</div>` +
-        `<p class="max-w-[46ch] leading-relaxed text-[var(--dim)]">${esc(r.blurb)}</p>`;
+        `<div class="${C.verb}">${esc(r.verb)}</div>` +
+        `<div class="${C.org}">${esc(r.org)}</div>` +
+        `<div class="${C.role}">${esc(r.title)} · ${esc(r.dates)}</div>` +
+        `<p class="${C.blurb}">${esc(r.blurb)}</p>`;
 
       chips.innerHTML = data.slice(0, i + 1).flatMap((role, k) =>
         role.capabilities.map((c) => {
-          const fresh = k === i
-            ? 'border-[var(--acc)] text-[var(--acc)] font-semibold'
-            : 'border-[var(--cardline)] text-[var(--dim)]';
-          return `<li class="rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs ${fresh}">${esc(c)}</li>`;
+          /* The visually-hidden "(new)" is not decoration: freshness is otherwise
+             encoded only in border and text colour, which fails 1.4.1 for low-vision
+             sighted users as well as being invisible to AT. */
+          const state = k === i ? C.fresh : C.stale;
+          const flag = k === i ? '<span class="sr-only"> (new)</span>' : '';
+          return `<li class="${C.chip} ${state}">${esc(c)}${flag}</li>`;
         })
       ).join('');
     }
 
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
     stops.forEach((el, i) => {
-      el.addEventListener('click', () => select(i));
+      el.addEventListener('click', () => { stop(); select(i); });
       el.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const keys = { ArrowRight: Math.min(i + 1, stops.length - 1), ArrowLeft: Math.max(i - 1, 0),
+                       Home: 0, End: stops.length - 1 };
+        if (!(e.key in keys)) return;
         e.preventDefault();
-        const next = e.key === 'ArrowRight'
-          ? Math.min(i + 1, stops.length - 1)
-          : Math.max(i - 1, 0);
-        stops[next].focus();
-        select(next);
+        stop();
+        stops[keys[e.key]].focus();
+        select(keys[e.key]);
       });
     });
 
-    select(stops.length - 1);
+    play?.addEventListener('click', () => {
+      stop();
+      let i = 0;
+      select(0);
+      timer = setInterval(() => { i += 1; if (i > last) return stop(); select(i); }, 1100);
+    });
   })();
 </script>
 ```
@@ -2225,7 +2333,7 @@ import Trajectory from '../components/Trajectory.astro';
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `npx playwright test tests/e2e/trajectory.spec.ts --project=desktop`
-Expected: `6 passed`.
+Expected: `11 passed`.
 
 - [ ] **Step 6: Commit**
 

@@ -138,6 +138,10 @@ Five stops across 2021–2026. Clicking a stop shows that role's detail; **capab
 
 **Every chip must say something the org name beside it does not.** "European first division" next to "RSC Anderlecht" in 24px type adds nothing, and padding the accumulation is the fastest way to lose a sceptical reader — the same reflex Rule 1 exists to avoid. Chips also carry the director signal, so they are phrased at full volume: "in the room on squad-building", not "squad-building input".
 
+**It works with JavaScript disabled.** The final stop and the full chip set are server-rendered; the script replaces them on load. This is not defensive theatre — the script is inline, so a content blocker, any future CSP, or a crawler that does not execute JS would otherwise see an empty section. LinkedIn's preview bot is one of those, and §7 makes LinkedIn the de facto inbox.
+
+**Changes are announced.** The detail panel is an `aria-live="polite"` region, so arrowing between stops speaks the new role rather than changing silently. Newly-added chips carry a visually-hidden "(new)" — freshness was otherwise encoded only in colour, which fails WCAG 1.4.1 for low-vision sighted users as well as being invisible to assistive tech.
+
 A timeline that simply *ascends* was designed and rejected: Orlando City was a broader remit at a smaller club and Anderlecht a narrower remit at a bigger one, so a rising line would fake a ladder that does not exist. Cumulative breadth is the thing that honestly only ever increases.
 
 | Stop | Verb | Capabilities added |
