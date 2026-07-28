@@ -6,53 +6,63 @@ const data = editions.map((e) => e.data);
 const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${n}th`;
 
 /* The most recent edition that has actually happened — not the last tab. Opening on the
-   upcoming one shows a title, a date and 26 characters of "Programme to be announced",
-   the emptiest panel on the site, where spec §6 wants the growth argument. Self-corrects
-   once '26 flips to past. */
+   upcoming one shows a date and 26 characters of "Programme to be announced", the
+   emptiest panel on the site, where spec §6 wants the growth argument. Self-corrects once
+   '26 flips to past. */
 const defaultIndex = Math.max(0, data.map((e) => e.status).lastIndexOf('past'));
-
-const C = {
-  head: 'text-lg font-semibold tracking-tight',
-  meta: 'mb-2.5 text-xs text-[var(--faint)]',
-  body: 'max-w-[58ch] leading-relaxed text-[var(--dim)]',
-  note: 'max-w-[58ch] leading-relaxed text-[var(--faint)]',
-  sponsors: 'mt-3 text-xs text-[var(--faint)]',
-  badge: 'ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]',
-};
-const d = data[defaultIndex];
 ---
 <div>
   <div role="tablist" aria-label="FAME editions" class="mb-5 flex flex-wrap gap-1.5">
     {data.map((e, i) => (
       <button type="button" role="tab" id={`fame-tab-${i}`}
-              aria-controls="fame-panel"
+              aria-controls={`fame-panel-${i}`}
               aria-selected={i === defaultIndex ? 'true' : 'false'}
               tabindex={i === defaultIndex ? 0 : -1}
               data-index={i}
-              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]"
+              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-2.5 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]"
               style={i === defaultIndex ? 'background:var(--acc);border-color:var(--acc);color:#fff' : ''}>
         {e.year}
       </button>
     ))}
   </div>
-  <div id="fame-panel" role="tabpanel" data-testid="fame-panel"
-       aria-labelledby={`fame-tab-${defaultIndex}`} class="min-h-[8rem]">
-    <div class={C.head}>FAME '{String(d.year).slice(2)} — {ordinal(d.edition)} edition</div>
-    <div class={C.meta}>{d.date} · {d.venue}</div>
-    {d.detail ? <p class={C.body}>{d.detail}</p> : <p class={C.note}>{d.note}</p>}
-    {d.sponsors.length > 0 && (
-      <p data-testid="fame-sponsors" class={C.sponsors}>Sponsored by {d.sponsors.join(' and ')}</p>
-    )}
+
+  <!-- data-testid stays on the wrapper so tests keep resolving one element.
+       tabindex="0" on each panel because none contains a focusable element: without it
+       the APG pattern breaks and Tab jumps from the tablist straight to the footer,
+       leaving the content the tab just selected unreachable by keyboard. axe has no rule
+       for this, so Task 19's gate would have passed it. -->
+  <div data-testid="fame-panel" class="min-h-[10rem]">
+    {data.map((e, i) => (
+      <div id={`fame-panel-${i}`} role="tabpanel" tabindex="0"
+           aria-labelledby={`fame-tab-${i}`} hidden={i !== defaultIndex} class="fame-panel">
+        <h3 class="text-lg font-semibold tracking-tight">
+          FAME '{String(e.year).slice(2)} — {ordinal(e.edition)} edition
+          {/* The space before the badge is load-bearing: ml-2 supplies the visual gap but
+              no word boundary, so this read as "5th editionUPCOMING" to a screen reader
+              and to any text extraction. */}
+          {e.status === 'upcoming' && (
+            <> <span class="ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">Upcoming</span></>
+          )}
+        </h3>
+        <p class="mb-2.5 text-xs text-[var(--faint)]">{e.date} · {e.venue}</p>
+        {e.detail
+          ? <p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">{e.detail}</p>
+          : <p class="max-w-[58ch] leading-relaxed text-[var(--faint)]">{e.note}</p>}
+        {e.sponsors.length > 0 && (
+          <p data-testid="fame-sponsors" class="mt-3 text-xs text-[var(--faint)]">
+            Sponsored by {e.sponsors.join(' and ')}
+          </p>
+        )}
+      </div>
+    ))}
   </div>
 </div>
 
-<script is:inline define:vars={{ data, C, defaultIndex, ordinals: data.map((e) => ordinal(e.edition)) }}>
+<script is:inline>
   (() => {
-    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
-      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const tabs = Array.from(document.querySelectorAll('.fame-tab'));
-    const panel = document.getElementById('fame-panel');
-    if (!tabs.length || !panel) return;
+    const panels = Array.from(document.querySelectorAll('.fame-panel'));
+    if (!tabs.length || tabs.length !== panels.length) return;
 
     function select(i) {
       tabs.forEach((t, j) => {
@@ -60,27 +70,12 @@ const d = data[defaultIndex];
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
         /* --acc, not --accfill: white on #009739 is 3.83:1 and fails AA at this 14px
-           label size. White on #0a7d33 is 5.26:1. Task 19's axe gate reads computed
-           styles after this runs, so it would catch it. */
+           label size. White on #0a7d33 is 5.26:1. */
         t.style.background = on ? 'var(--acc)' : 'var(--card)';
         t.style.borderColor = on ? 'var(--acc)' : 'var(--cardline)';
         t.style.color = on ? '#fff' : 'var(--dim)';
       });
-      panel.setAttribute('aria-labelledby', `fame-tab-${i}`);
-
-      const e = data[i];
-      const badge = e.status === 'upcoming'
-        ? `<span class="${C.badge}">Upcoming</span>` : '';
-      const body = e.detail
-        ? `<p class="${C.body}">${esc(e.detail)}</p>`
-        : `<p class="${C.note}">${esc(e.note || '')}</p>`;
-      const sponsors = e.sponsors && e.sponsors.length
-        ? `<p data-testid="fame-sponsors" class="${C.sponsors}">Sponsored by ${e.sponsors.map(esc).join(' and ')}</p>`
-        : '';
-
-      panel.innerHTML =
-        `<div class="${C.head}">FAME '${esc(String(e.year).slice(2))} — ${ordinals[i]} edition${badge}</div>` +
-        `<div class="${C.meta}">${esc(e.date)} · ${esc(e.venue)}</div>` + body + sponsors;
+      panels.forEach((p, j) => { p.hidden = j !== i; });
     }
 
     tabs.forEach((t, i) => {
@@ -94,7 +89,5 @@ const d = data[defaultIndex];
         select(keys[ev.key]);
       });
     });
-
-    select(defaultIndex);
   })();
 </script>

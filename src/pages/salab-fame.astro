@@ -10,7 +10,7 @@ import FameSwitcher from '../components/FameSwitcher.astro';
   </p>
 
   <section class="border-t border-[var(--hair)] py-10">
-    <SectionHead kicker="Sports Analytics Lab" sub="founded 2022" />
+    <SectionHead kicker="Sports Analytics Lab" sub="founded 2022" moreHref="https://salabufmg.github.io/" moreLabel="salabufmg.github.io" moreTestid="salab-link" />
     <p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">
       Brazil's first sports analytics lab, co-founded in 2022 and supervised by Wagner Meira Jr.
       and Adriano César Pereira of UFMG's Computer Science Department. Research, teaching, and a
@@ -18,8 +18,10 @@ import FameSwitcher from '../components/FameSwitcher.astro';
     </p>
   </section>
 
+  <!-- The page whose entire function is proof had zero outbound links. A reader who
+       thinks "is this real?" needs somewhere to go, and the homepage already links both. -->
   <section class="border-t border-[var(--hair)] py-10">
-    <SectionHead kicker="FAME" sub="Football Analytics: Modeling & Experience" />
+    <SectionHead kicker="FAME" sub="Football Analytics: Modeling & Experience" moreHref="https://salabufmg.github.io/FAME26/" moreLabel="FAME '26" moreTestid="fame-link" />
     <FameSwitcher />
   </section>
 

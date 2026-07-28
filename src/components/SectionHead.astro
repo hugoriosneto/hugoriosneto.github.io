@@ -16,7 +16,10 @@ const Kicker = tag;
   <Kicker class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</Kicker>
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
-    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref} data-testid={moreTestid}>
+    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}
+       data-testid={moreTestid}
+       target={moreHref?.startsWith('http') ? '_blank' : undefined}
+       rel={moreHref?.startsWith('http') ? 'noopener' : undefined}>
       {moreLabel ?? 'More'} <span aria-hidden="true">→</span>
     </a>
   )}
