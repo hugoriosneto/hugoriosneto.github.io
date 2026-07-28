@@ -11,8 +11,13 @@ const PAGES = ['/', '/research', '/salab-fame', '/talks', '/cv', '/404'];
 for (const path of PAGES) {
   test(`${path} has no axe violations`, async ({ page }) => {
     await page.goto(path);
+    // 'best-practice' added alongside the wcag2*/wcag21* tags: axe tags rules like
+    // heading-order as best-practice only, not any WCAG criterion, so a wcag-only
+    // filter cannot see them even though Lighthouse's unfiltered axe run does. That
+    // asymmetry — one gate silent where the other one fires — is what let TalkCard's
+    // h1->h3 skip through as a passing axe run. Both gates now check the same rules.
     const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
       .analyze();
     expect(results.violations).toEqual([]);
   });

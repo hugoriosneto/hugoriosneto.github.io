@@ -7,7 +7,8 @@
         "http://localhost/research/index.html",
         "http://localhost/salab-fame/index.html",
         "http://localhost/talks/index.html",
-        "http://localhost/cv/index.html"
+        "http://localhost/cv/index.html",
+        "http://localhost/404.html"
       ],
       "numberOfRuns": 1
     },
