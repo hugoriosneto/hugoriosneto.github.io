@@ -152,6 +152,18 @@ test('identity legend links to SALab, FAME and MLSA', async ({ page }) => {
   await expect(legend.getByRole('link', { name: /MLSA/ })).toHaveAttribute('href', /dtai\.cs\.kuleuven\.be/);
 });
 
+test('both "Co-" role clauses use a non-breaking hyphen', async ({ page }) => {
+  await page.goto('/');
+  // U+2011, not the ASCII U+002D. With a plain hyphen both clauses break after it at
+  // every legend width under ~370px (measured at 375, 414 and 768), leaving a line that
+  // ends "Co-". Asserting the character is what keeps a later tidy-up of the HTML entity
+  // from silently reintroducing the break — the rendered text looks identical here.
+  const text = (await page.getByTestId('legend').textContent()) ?? '';
+  expect(text).toContain('Co‑founder');
+  expect(text).toContain('Co‑organizer');
+  expect(text, 'an ASCII hyphen came back in a "Co-" clause').not.toMatch(/Co-(founder|organizer)/);
+});
+
 test('the highlighter survives print and forced-colors', async ({ page }) => {
   await page.goto('/');
   // The emphasis is a background gradient, and both of these modes strip backgrounds
