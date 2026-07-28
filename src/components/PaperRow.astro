@@ -1,0 +1,46 @@
+---
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { toBibtex } from '../lib/bibtex';
+
+const { paper, id } = Astro.props;
+const bib = toBibtex(paper);
+const pill = 'rounded-full border border-[var(--cardline)] bg-[var(--card)] px-2.5 py-1 text-xs text-[var(--dim)] no-underline hover:border-[var(--acc)] hover:text-[var(--acc)]';
+
+/* Previews are named after the paper id, so there is no `preview:` field in the data
+   to fall out of sync. Only `width` is passed to <Image> — supplying both width and
+   height would distort sources whose aspect ratios disagree (they span 840x840 to
+   246x246 to 310x345). The square crop is done in CSS with object-cover, which is
+   centred and correct whatever the source aspect. */
+const previews = import.meta.glob<{ default: ImageMetadata }>('/src/assets/papers/*.png', { eager: true });
+const preview = previews[`/src/assets/papers/${id}.png`]?.default;
+---
+<div data-testid={`paper-${id}`} class="border-b border-[var(--hair)]">
+  <details class="group">
+    <summary class="flex cursor-pointer list-none items-baseline gap-4 py-3.5">
+      <span data-testid="paper-year" class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{paper.year}</span>
+      {preview && (
+        <Image src={preview} alt="" width={160} loading="lazy"
+               data-testid="paper-preview"
+               class="hidden h-14 w-14 shrink-0 self-center rounded-lg border border-[var(--cardline)] object-cover sm:block" />
+      )}
+      <span>
+        <span class="text-[0.9rem] font-medium leading-snug group-hover:text-[var(--acc)]">{paper.title}</span>
+        <span class="block text-xs text-[var(--faint)]">{paper.venue}</span>
+      </span>
+      <span class="ml-auto shrink-0 text-[var(--faint)] transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+    </summary>
+    <div class="pb-5 pl-14">
+      <p class="mb-2 text-sm leading-relaxed text-[var(--dim)]">
+        {paper.authors.map((n: string, i: number) => (
+          <>{i > 0 && ', '}{n.includes('Rios-Neto') ? <b class="font-semibold text-[var(--ink)]">{n}</b> : n}</>
+        ))}
+      </p>
+      <div class="flex flex-wrap gap-1.5">
+        {paper.pdf && <a class={pill} href={paper.pdf}>PDF</a>}
+        {paper.url && <a class={pill} href={paper.url} target="_blank" rel="noopener">Publisher</a>}
+        <button type="button" class={pill} data-bibtex={bib}>Copy BibTeX</button>
+      </div>
+    </div>
+  </details>
+</div>
