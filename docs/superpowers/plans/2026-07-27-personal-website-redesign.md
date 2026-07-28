@@ -2983,6 +2983,29 @@ test('renders the upcoming edition without a programme', async ({ page }) => {
   await expect(panel).toContainText('Upcoming');
 });
 
+test('the default edition is server-rendered, so it survives with JavaScript off', async ({ browser }) => {
+  // The panel used to be an empty div the script filled. With scripts off that lost the
+  // whole of FAME — on the page that exists to carry it.
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const p = await ctx.newPage();
+  await p.goto('/salab-fame');
+  const panel = p.getByTestId('fame-panel');
+  await expect(panel).toContainText('3 September 2025');
+  await expect(panel).toContainText('4th edition');
+  await expect(panel).toContainText('Gradient Sports');
+  await ctx.close();
+});
+
+test('Home and End jump to the ends of the tablist', async ({ page }) => {
+  await page.goto('/salab-fame');
+  const tab = page.getByRole('tab', { name: /2024/ });
+  await tab.click();
+  await tab.press('Home');
+  await expect(page.getByTestId('fame-panel')).toContainText('21 October 2022');
+  await page.getByRole('tab', { name: /2022/ }).press('End');
+  await expect(page.getByTestId('fame-panel')).toContainText('28 September 2026');
+});
+
 test('tabs are keyboard navigable', async ({ page }) => {
   await page.goto('/salab-fame');
   const first = page.getByRole('tab', { name: /2022/ });
@@ -3000,30 +3023,64 @@ Expected: FAIL — `/salab-fame` 404s.
 
 - [ ] **Step 3: Create `src/components/FameSwitcher.astro`**
 
+**The default panel is server-rendered.** An earlier draft left `#fame-panel` empty for the
+script to fill, which meant that with JavaScript off `/salab-fame` showed a heading, the
+SALab paragraph, five year tabs that did nothing, and an empty box — losing FAME entirely,
+on the page that exists to carry it. Task 11 hit exactly this and the reasoning is the
+same: the script is `is:inline`, so the failure modes are content blockers, any CSP added
+later, and crawlers that do not execute JS. Class strings live in one `C` object shared by
+the markup and the script so the two cannot drift.
+
 ```astro
 ---
 import { getCollection } from 'astro:content';
+
 const editions = (await getCollection('fame')).sort((a, b) => a.data.edition - b.data.edition);
 const data = editions.map((e) => e.data);
 const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${n}th`;
+
+/* The most recent edition that has actually happened — not the last tab. Opening on the
+   upcoming one shows a title, a date and 26 characters of "Programme to be announced",
+   the emptiest panel on the site, where spec §6 wants the growth argument. Self-corrects
+   once '26 flips to past. */
+const defaultIndex = Math.max(0, data.map((e) => e.status).lastIndexOf('past'));
+
+const C = {
+  head: 'text-lg font-semibold tracking-tight',
+  meta: 'mb-2.5 text-xs text-[var(--faint)]',
+  body: 'max-w-[58ch] leading-relaxed text-[var(--dim)]',
+  note: 'max-w-[58ch] leading-relaxed text-[var(--faint)]',
+  sponsors: 'mt-3 text-xs text-[var(--faint)]',
+  badge: 'ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]',
+};
+const d = data[defaultIndex];
 ---
 <div>
   <div role="tablist" aria-label="FAME editions" class="mb-5 flex flex-wrap gap-1.5">
     {data.map((e, i) => (
       <button type="button" role="tab" id={`fame-tab-${i}`}
               aria-controls="fame-panel"
-              aria-selected={e.status === 'past' && i === data.map((x) => x.status).lastIndexOf('past') ? 'true' : 'false'}
-              tabindex={e.status === 'past' && i === data.map((x) => x.status).lastIndexOf('past') ? 0 : -1}
+              aria-selected={i === defaultIndex ? 'true' : 'false'}
+              tabindex={i === defaultIndex ? 0 : -1}
               data-index={i}
-              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]">
+              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]"
+              style={i === defaultIndex ? 'background:var(--acc);border-color:var(--acc);color:#fff' : ''}>
         {e.year}
       </button>
     ))}
   </div>
-  <div id="fame-panel" role="tabpanel" data-testid="fame-panel" class="min-h-[8rem]"></div>
+  <div id="fame-panel" role="tabpanel" data-testid="fame-panel"
+       aria-labelledby={`fame-tab-${defaultIndex}`} class="min-h-[8rem]">
+    <div class={C.head}>FAME '{String(d.year).slice(2)} — {ordinal(d.edition)} edition</div>
+    <div class={C.meta}>{d.date} · {d.venue}</div>
+    {d.detail ? <p class={C.body}>{d.detail}</p> : <p class={C.note}>{d.note}</p>}
+    {d.sponsors.length > 0 && (
+      <p data-testid="fame-sponsors" class={C.sponsors}>Sponsored by {d.sponsors.join(' and ')}</p>
+    )}
+  </div>
 </div>
 
-<script is:inline define:vars={{ data, ordinals: data.map((e) => ordinal(e.edition)), defaultIndex: Math.max(0, data.map((e) => e.status).lastIndexOf('past')) }}>
+<script is:inline define:vars={{ data, C, defaultIndex, ordinals: data.map((e) => ordinal(e.edition)) }}>
   (() => {
     const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -3036,9 +3093,9 @@ const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${
         const on = i === j;
         t.setAttribute('aria-selected', on ? 'true' : 'false');
         t.tabIndex = on ? 0 : -1;
-        // --acc, not --accfill: white on #009739 is 3.83:1 and fails AA at this
-        // 14px label size. White on #0a7d33 is 5.26:1. Task 19's axe gate reads
-        // computed styles after select() runs, so it would catch this.
+        /* --acc, not --accfill: white on #009739 is 3.83:1 and fails AA at this 14px
+           label size. White on #0a7d33 is 5.26:1. Task 19's axe gate reads computed
+           styles after this runs, so it would catch it. */
         t.style.background = on ? 'var(--acc)' : 'var(--card)';
         t.style.borderColor = on ? 'var(--acc)' : 'var(--cardline)';
         t.style.color = on ? '#fff' : 'var(--dim)';
@@ -3047,35 +3104,31 @@ const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${
 
       const e = data[i];
       const badge = e.status === 'upcoming'
-        ? '<span class="ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">Upcoming</span>'
-        : '';
-      const sponsors = e.sponsors && e.sponsors.length
-        ? `<p data-testid="fame-sponsors" class="mt-3 text-xs text-[var(--faint)]">Sponsored by ${e.sponsors.map(esc).join(' and ')}</p>`
-        : '';
+        ? `<span class="${C.badge}">Upcoming</span>` : '';
       const body = e.detail
-        ? `<p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">${esc(e.detail)}</p>`
-        : `<p class="max-w-[58ch] leading-relaxed text-[var(--faint)]">${esc(e.note || '')}</p>`;
+        ? `<p class="${C.body}">${esc(e.detail)}</p>`
+        : `<p class="${C.note}">${esc(e.note || '')}</p>`;
+      const sponsors = e.sponsors && e.sponsors.length
+        ? `<p data-testid="fame-sponsors" class="${C.sponsors}">Sponsored by ${e.sponsors.map(esc).join(' and ')}</p>`
+        : '';
 
       panel.innerHTML =
-        `<div class="text-lg font-semibold tracking-tight">FAME '${String(e.year).slice(2)} — ${ordinals[i]} edition${badge}</div>` +
-        `<div class="mb-2.5 text-xs text-[var(--faint)]">${esc(e.date)} · ${esc(e.venue)}</div>` +
-        body + sponsors;
+        `<div class="${C.head}">FAME '${esc(String(e.year).slice(2))} — ${ordinals[i]} edition${badge}</div>` +
+        `<div class="${C.meta}">${esc(e.date)} · ${esc(e.venue)}</div>` + body + sponsors;
     }
 
     tabs.forEach((t, i) => {
       t.addEventListener('click', () => select(i));
       t.addEventListener('keydown', (ev) => {
-        if (ev.key !== 'ArrowRight' && ev.key !== 'ArrowLeft') return;
+        const keys = { ArrowRight: Math.min(i + 1, tabs.length - 1), ArrowLeft: Math.max(i - 1, 0),
+                       Home: 0, End: tabs.length - 1 };
+        if (!(ev.key in keys)) return;
         ev.preventDefault();
-        const n = ev.key === 'ArrowRight' ? Math.min(i + 1, tabs.length - 1) : Math.max(i - 1, 0);
-        tabs[n].focus();
-        select(n);
+        tabs[keys[ev.key]].focus();
+        select(keys[ev.key]);
       });
     });
 
-    // The most recent PAST edition, not the last tab. Opening on the upcoming one
-    // shows a title, a date and 26 characters of "Programme to be announced." — the
-    // single emptiest panel on the site, where spec §6 wants the growth argument.
     select(defaultIndex);
   })();
 </script>
@@ -3115,7 +3168,7 @@ import FameSwitcher from '../components/FameSwitcher.astro';
 - [ ] **Step 5: Run the test**
 
 Run: `npx playwright test tests/e2e/salab-fame.spec.ts --project=desktop`
-Expected: `6 passed`.
+Expected: `8 passed`.
 
 - [ ] **Step 6: Commit**
 
