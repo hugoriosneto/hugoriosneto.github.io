@@ -76,3 +76,32 @@ test('page states no ambition or forward-looking claim', async ({ page }) => {
   const text = await page.locator('body').innerText();
   expect(text).not.toMatch(/Seleção|what's next|technical director|football director|aspire/i);
 });
+
+test('shows the two things built from nothing', async ({ page }) => {
+  await page.goto('/');
+  const built = page.getByTestId('built');
+  await expect(built).toContainText('Sports Analytics Lab');
+  await expect(built).toContainText('FAME');
+  await expect(built).toContainText('5');
+});
+
+test('Why Brazil uses the approved W2 copy', async ({ page }) => {
+  await page.goto('/');
+  const why = page.getByTestId('why-brazil');
+  await expect(why).toContainText('No country has won more World Cups than Brazil');
+  await expect(why).toContainText('Closing that gap is what my career has been');
+});
+
+test('the research teaser carries the thesis and MLSA rows, not just papers', async ({ page }) => {
+  await page.goto('/');
+  const body = page.locator('body');
+  await expect(body).toContainText('thesis defended');
+  await expect(body).toContainText('13th edition');
+});
+
+test('teasers link to the full pages', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /All research/ })).toHaveAttribute('href', '/research');
+  await expect(page.getByRole('link', { name: /All talks/ })).toHaveAttribute('href', '/talks');
+  await expect(page.getByRole('link', { name: /SALab & FAME/ }).last()).toHaveAttribute('href', '/salab-fame');
+});
