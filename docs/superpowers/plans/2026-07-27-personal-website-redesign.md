@@ -3750,17 +3750,71 @@ import Base from '../layouts/Base.astro';
 </Base>
 ```
 
-- [ ] **Step 3: Generate the Open Graph image**
+- [ ] **Step 3: Build a purpose-made Open Graph card, not a screenshot**
+
+An earlier version screenshotted the homepage at 1200×630. Spec §5 rules that out in
+as many words: *"A cream, text-heavy page shrunk to a thumbnail reads as illegible grey,
+which is what a screenshot would have produced."* Spec §7 makes LinkedIn the de facto
+inbox, so this card is the highest-traffic surface the site has for the intended reader.
+
+The fix was originally parked on Task 22's photograph, which would leave the site shipping
+the card the spec rejected if that file never arrives. So the card is designed instead:
+type at a size that survives a thumbnail, on the site's own tokens. Task 22 can swap the
+photo in later if wanted.
+
+`src/pages/og.astro` — a standalone 1200×630 page, never linked and excluded from the
+sitemap:
+
+```astro
+---
+import '../styles/global.css';
+/* Not a real page: rendered once at 1200x630 and screenshotted into public/img/og.png.
+   `sitemap: false` keeps it out of the index; nothing links to it. */
+export const prerender = true;
+---
+<html lang="en">
+  <head><meta charset="utf-8" /><title>og</title>
+    <meta name="robots" content="noindex" />
+  </head>
+  <body class="m-0">
+    <div class="flex h-[630px] w-[1200px] flex-col justify-between bg-[var(--bg)] px-20 py-16">
+      <div class="flex h-[6px] w-40">
+        <i class="flex-[2] bg-[var(--accfill)]"></i><i class="flex-1 bg-[#FEDD00]"></i><i class="flex-[1.4] bg-[var(--acc2)]"></i>
+      </div>
+      <div class="font-serif text-[68px] leading-[1.15] tracking-[-0.02em] text-[var(--ink)]">
+        <span class="block">Brazil's <span class="highlight">first</span> club analytics department.</span>
+        <span class="block">Its <span class="highlight">first</span> sports analytics lab.</span>
+        <span class="block">Its <span class="highlight">first</span> football analytics conference.</span>
+      </div>
+      <div class="border-t-4 border-[var(--ink)] pt-6">
+        <div class="text-[34px] font-semibold tracking-tight text-[var(--ink)]">Hugo Rios-Neto</div>
+        <div class="mt-1 text-[22px] text-[var(--dim)]">Data Recruitment Lead, RSC Anderlecht</div>
+      </div>
+    </div>
+  </body>
+</html>
+```
+
+Add to `astro.config.mjs`'s sitemap integration so the card never appears in the index:
+
+```js
+  integrations: [sitemap({ filter: (page) => !page.endsWith('/og/') })],
+```
+
+Then render it:
 
 ```bash
 npm run build
 npx --yes serve dist -l 4322 & SERVER=$!
 sleep 3
 npx playwright screenshot --viewport-size=1200,630 --wait-for-timeout=1500 \
-  http://localhost:4322/ public/img/og.png
+  http://localhost:4322/og/ public/img/og.png
 kill $SERVER
 ```
-Expected: `public/img/og.png` exists. Confirm with `file public/img/og.png` — it should report `1200 x 630`.
+
+Expected: `public/img/og.png` at 1200×630. **Open it and look at it.** The three claims and
+the name must be legible at thumbnail size — that is the entire point, and it is not
+something a dimension check can tell you.
 
 - [ ] **Step 4: Write the routing test**
 
@@ -3796,9 +3850,21 @@ test('unknown URLs render the 404 page', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1 })).toContainText("doesn't exist");
 });
 
-test('sitemap is generated', async ({ request }) => {
+test('sitemap is generated and excludes the OG card', async ({ request }) => {
   const res = await request.get('/sitemap-index.xml');
   expect(res.status()).toBe(200);
+  const idx = await request.get('/sitemap-0.xml');
+  expect(await idx.text()).not.toContain('/og/');
+});
+
+test('the OG card is a designed image, not a page screenshot', async ({ request, page }) => {
+  const res = await request.get('/img/og.png');
+  expect(res.status()).toBe(200);
+  expect(res.headers()['content-type']).toContain('image');
+  // The card page renders the claims at display size so they survive a thumbnail.
+  await page.goto('/og/');
+  const size = await page.locator('.font-serif').first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  expect(size).toBeGreaterThan(48);
 });
 
 test('every internal link on every page resolves', async ({ page, request }) => {
@@ -3832,7 +3898,7 @@ test('paper PDFs keep the URLs they are cited at', async ({ request }) => {
 - [ ] **Step 5: Run the routing test**
 
 Run: `npx playwright test tests/e2e/routing.spec.ts --project=desktop`
-Expected: `13 passed` — 9 redirects, the 404, the sitemap, the internal-link sweep, and the PDF URL check.
+Expected: `14 passed` — 9 redirects, the 404, the sitemap, the OG card, the internal-link sweep, and the PDF URL check.
 
 - [ ] **Step 6: Commit**
 
