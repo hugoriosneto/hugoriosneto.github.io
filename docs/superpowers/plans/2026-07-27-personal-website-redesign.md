@@ -2423,8 +2423,12 @@ test('no list draws a trailing rule above the next section', async ({ page }) =>
   // could never fire: the gap is a full section's padding. Assert the cause instead —
   // divide-y deliberately skips the last child, so a trailing border means someone
   // re-added border-b.
+  // Scoped to lists that opted into divide-y — the only ones where a trailing border
+  // is a defect. Plain `main ul` also catches the trajectory's capability-chip cloud,
+  // whose chips are rounded pills with a border on all four sides, so its last child
+  // always reports a bottom border and the test was unconditionally red.
   const trailing = await page.evaluate(() =>
-    [...document.querySelectorAll('main ul')].map((ul, i) => {
+    [...document.querySelectorAll('main ul[class*="divide-y"]')].map((ul, i) => {
       const last = ul.lastElementChild;
       const w = last ? parseFloat(getComputedStyle(last).borderBottomWidth) : 0;
       return { list: i, width: w };
