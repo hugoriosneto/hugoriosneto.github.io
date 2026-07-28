@@ -72,8 +72,16 @@ test('marks new chips with text, not only colour', async ({ page }) => {
   await page.goto('/');
   // Freshness was encoded only in border and text colour — WCAG 1.4.1, and invisible
   // to assistive tech. The two Anderlecht chips are the new ones at the final stop.
+  // Marking is per selected stop, not "only ever the last of the five": each stop's own
+  // newly-revealed chips are the ones flagged. Anderlecht contributes two.
   await page.getByRole('button', { name: /RSC Anderlecht/ }).click();
   await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(2);
+  // Atlético contributes two of its own, so this is 2 rather than 0.
+  await page.getByRole('button', { name: /Atlético Mineiro/ }).click();
+  await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(2);
+  // Orlando contributes exactly one — the clearest proof the count tracks the stop.
+  await page.getByRole('button', { name: /Orlando City SC/ }).click();
+  await expect(page.getByTestId('trajectory-chips').locator('.sr-only')).toHaveCount(1);
 });
 
 test('Home and End jump to the ends of the rail', async ({ page }) => {
