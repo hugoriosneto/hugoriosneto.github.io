@@ -2415,32 +2415,21 @@ test('the research and talks lists share one left edge', async ({ page }) => {
   expect(Math.abs(research - talks), `research titles at ${research}, talks at ${talks}`).toBeLessThan(2);
 });
 
-test('no section seam draws two parallel hairlines', async ({ page }) => {
+test('no list draws a trailing rule above the next section', async ({ page }) => {
   await page.goto('/');
-  // border-b on every li meant each list's last row drew a full-width rule 48px above
-  // the next section's border-t. divide-y fixes it; this catches a regression.
-  const ys = await page.evaluate(() =>
-    [...document.querySelectorAll('main *')]
-      .filter((el) => {
-        const cs = getComputedStyle(el);
-        // Structural rules only. `main *` alone also catches the capability chips, the
-        // rail's stop dots and the tag badges — small rounded pills that legitimately
-        // carry both a top and a bottom border. A structural rule spans the column;
-        // nothing decorative here is wider than 200px.
-        if (el.getBoundingClientRect().width < 200) return false;
-        return parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
-      })
-      .flatMap((el) => {
-        const r = el.getBoundingClientRect();
-        const cs = getComputedStyle(el);
-        const out: number[] = [];
-        if (parseFloat(cs.borderTopWidth) > 0) out.push(Math.round(r.top));
-        if (parseFloat(cs.borderBottomWidth) > 0) out.push(Math.round(r.bottom));
-        return out;
-      })
-      .sort((a, b) => a - b));
-  const tooClose = ys.filter((y, i) => i > 0 && y - ys[i - 1] > 0 && y - ys[i - 1] < 8);
-  expect(tooClose, `hairlines within 8px of each other at y=${tooClose.join(', ')}`).toEqual([]);
+  // The defect this guards: `border-b` on every <li> gave the LAST row a bottom rule,
+  // 48px above the next section's `border-t` — two hairlines with only padding between.
+  // An earlier version of this test looked for rules within 8px of each other, which
+  // could never fire: the gap is a full section's padding. Assert the cause instead —
+  // divide-y deliberately skips the last child, so a trailing border means someone
+  // re-added border-b.
+  const trailing = await page.evaluate(() =>
+    [...document.querySelectorAll('main ul')].map((ul, i) => {
+      const last = ul.lastElementChild;
+      const w = last ? parseFloat(getComputedStyle(last).borderBottomWidth) : 0;
+      return { list: i, width: w };
+    }).filter((r) => r.width > 0));
+  expect(trailing, `list(s) drawing a trailing rule: ${JSON.stringify(trailing)}`).toEqual([]);
 });
 
 test('teasers link to the full pages', async ({ page }) => {
@@ -2486,10 +2475,15 @@ const fame = await getCollection('fame');
 
   <section class="border-t border-[var(--hair)] py-12">
     <SectionHead kicker="Built from nothing" sub="and still running" moreHref="/salab-fame" moreLabel="SALab & FAME" moreTestid="built-more" />
-    <!-- md, not sm: at 768px — one of the three widths the spec mandates checking —
-         FAME's meta line wraps and grid-stretch leaves the SALab card with 40px of dead
-         space. gap-6 matches the card padding; gap-4 read as one block split by a seam. -->
-    <div data-testid="built" class="grid gap-6 md:grid-cols-2">
+    <!-- items-start, so each card sizes to its own content. Grid's default `stretch`
+         forces equal heights, which guarantees dead space inside the shorter card
+         whenever the two bodies differ by a line — and they do, at whichever width the
+         longer one happens to wrap. Chasing that by tuning copy fixes one breakpoint and
+         leaves the next copy edit to reintroduce it. Uneven bottoms on two bordered
+         cards read as normal; 24px of empty space inside one of them does not.
+         md, not sm: sm:grid-cols-2 put two columns at 640px where they are too narrow.
+         gap-6 matches the card padding; gap-4 read as one block split by a seam. -->
+    <div data-testid="built" class="grid items-start gap-6 md:grid-cols-2">
       <article class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
         <h3 class="text-lg font-semibold tracking-tight">Sports Analytics Lab (SALab)</h3>
         <p class="mb-3 text-xs text-[var(--faint)]">UFMG · co-founded 2022</p>
