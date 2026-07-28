@@ -45,13 +45,80 @@ test('the portrait is eager and high priority, never lazy', async ({ page }) => 
   await expect(portrait).toHaveAttribute('fetchpriority', 'high');
 });
 
-test('the portrait offers width candidates so a phone skips the desktop asset', async ({ page }) => {
+/** The candidate this engine actually picked, plus the box it picked it for. */
+async function resolvedCandidate(browser: import('@playwright/test').Browser,
+                                 width: number, deviceScaleFactor: number) {
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor });
+  const p = await ctx.newPage();
+  await p.goto('/');
+  await p.evaluate(() => document.fonts.ready);
+  const r = await p.getByTestId('hero').getByRole('img').evaluate((el: HTMLImageElement) => {
+    const map = new Map<string, number>();
+    for (const c of (el.getAttribute('srcset') ?? '').split(',')) {
+      const [u, w] = c.trim().split(/\s+/);
+      if (u && w) map.set(u.split('/').pop()!, Number(w.replace('w', '')));
+    }
+    return {
+      box: el.getBoundingClientRect().width,
+      resolved: map.get(el.currentSrc.split('/').pop()!) ?? 0,
+      largest: Math.max(...map.values()),
+    };
+  });
+  await ctx.close();
+  return r;
+}
+
+test('the portrait resolves a candidate sized to its box, and the list stops at 2x', async ({ page, browser }) => {
+  // RENAMED. This was "…so a phone skips the desktop asset", which the two string
+  // matches under it never asserted — and which is not even true: a 375px DPR3 phone
+  // needs 981 device px and therefore resolves to the LARGEST candidate on the list.
+  // The name now states the contract the assertions actually check.
+  // ORDER MATTERS. Real resolution is asserted FIRST. With the string matches on top,
+  // any mutation of `sizes` tripped a regex and the loop below never ran — an assertion
+  // that cannot be reached is an assertion that cannot fail. Mutating `sizes` alone now
+  // fails here, on what the browser actually fetched.
+  //
+  // Measured ratios: 1.00 at every DPR1 width (1.04 at 375, where a 327px box takes the
+  // 340 candidate) and 1.00 at 768/1280 DPR2. The ceilings sit just above that, so
+  // drifting the CSS box away from `sizes` in either direction trips one of them.
+  for (const [width, dpr] of [[375, 1], [768, 1], [896, 1], [1280, 1], [768, 2], [1280, 2]] as const) {
+    const r = await resolvedCandidate(browser, width, dpr);
+    expect(r.resolved, `${width}@${dpr}x resolved nothing`).toBeGreaterThan(0);
+    expect(r.resolved, `${width}@${dpr}x: ${r.resolved}w is blurry on a ${r.box}px box`)
+      .toBeGreaterThanOrEqual(r.box * dpr - 1);
+    expect(r.resolved, `${width}@${dpr}x: ${r.resolved}w over-fetches a ${r.box}px box`)
+      .toBeLessThanOrEqual(r.box * dpr * (dpr === 1 ? 1.15 : 1.10));
+  }
+
+  // The 2x ceiling, stated rather than implied: a 390px DPR3 phone wants 1026 device px,
+  // finds nothing above 1130 and settles for the top of the list at 3.30x its CSS box.
+  // That is the trade — do not "fix" it by adding a 1695 candidate.
+  //
+  // The bound is 1131px, NOT a multiple of this phone's box. An earlier draft asserted
+  // resolved/box < 4, which cannot fail: the source portrait is intrinsically 1260px
+  // wide, Astro clamps every candidate to it, and 1260/342 is 3.68. 1131 is 2x the
+  // widest CSS box the portrait ever occupies (the 565.3px 56ch cap), so it is the
+  // actual definition of "2x-class" and a candidate above it does fail.
+  const phone = await resolvedCandidate(browser, 390, 3);
+  expect(phone.resolved, 'a DPR3 phone no longer lands on the top candidate').toBe(phone.largest);
+  expect(phone.resolved, `a DPR3 phone pulled ${phone.resolved}w — above the 2x ceiling`)
+    .toBeLessThanOrEqual(1131);
+
   await page.goto('/');
   const portrait = portraitOf(page);
-  // widths + sizes, not densities: densities emits 1x/2x descriptors, which force
-  // every viewport to reason from the desktop candidate.
-  await expect(portrait).toHaveAttribute('srcset', /\b280w\b/);
-  await expect(portrait).toHaveAttribute('sizes', /340px/);
+  const declared = await portrait.evaluate((el: HTMLImageElement) =>
+    (el.getAttribute('srcset') ?? '').split(',')
+      .map((c) => Number(c.trim().split(/\s+/)[1]?.replace('w', ''))));
+  // widths + sizes, not densities: densities emits 1x/2x descriptors, which force every
+  // viewport to reason from the desktop candidate. The list is exact because each entry
+  // pairs with a CSS boundary — 340 and 680 for the desktop column, 565 and 1130 for the
+  // 56ch cap below the split. 1130 is a deliberate ceiling: nothing above it, so a DPR3
+  // phone takes the top of the list instead of pulling a 3x asset.
+  expect(declared).toEqual([280, 340, 400, 565, 680, 800, 1130]);
+  // sizes must track the same boundaries or the tablet band fetches the wrong candidate.
+  await expect(portrait).toHaveAttribute('sizes', /\(min-width:\s*896px\)\s*340px/);
+  await expect(portrait).toHaveAttribute('sizes', /\(min-width:\s*613px\)\s*565px/);
+  await expect(portrait).toHaveAttribute('sizes', /calc\(100vw\s*-\s*3rem\)/);
 });
 
 test('the portrait renders as a non-zero 4:5 box', async ({ page }) => {
@@ -181,17 +248,17 @@ test('the highlighter survives print and forced-colors', async ({ page }) => {
   await page.emulateMedia({ media: 'screen', forcedColors: 'none' });
 });
 
-test('no sentence in the h1 ends on a one-word orphan', async ({ page }) => {
-  await page.goto('/');
-  // max-w-[23ch] produces an identical wrap from 414px to 1440px, so an orphan here is
-  // an orphan at every desktop width, not an edge case.
-  //
-  // Counting lines via Range.getClientRects() over the whole span does NOT work: it
-  // returns one rect per DOM fragment, not per visual line, and every sentence contains
-  // a nested <span class="highlight">. A five-word sentence yields five rects and the
-  // ratio computes to 1 regardless of how it actually wraps. So walk word by word and
-  // group by the top edge instead, then count the words sharing the lowest line.
-  const worst = await page.locator('h1 > span.block').evaluateAll((spans) =>
+/**
+ * Words on the last visual line of the thinnest-ending h1 sentence.
+ *
+ * Counting lines via Range.getClientRects() over the whole span does NOT work: it
+ * returns one rect per DOM fragment, not per visual line, and every sentence contains
+ * a nested <span class="highlight">. A five-word sentence yields five rects and the
+ * ratio computes to 1 regardless of how it actually wraps. So walk word by word and
+ * group by the top edge instead, then count the words sharing the lowest line.
+ */
+const worstOrphan = (page: import('@playwright/test').Page) =>
+  page.locator('h1 > span.block').evaluateAll((spans) =>
     Math.min(...spans.map((span) => {
       const tops: number[] = [];
       const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
@@ -209,7 +276,90 @@ test('no sentence in the h1 ends on a one-word orphan', async ({ page }) => {
       const lastTop = Math.max(...tops);
       return tops.filter((t) => Math.abs(t - lastTop) < 2).length;
     })));
-  expect(worst, 'a sentence in the h1 ends on a single stranded word').toBeGreaterThan(1);
+
+test('no sentence in the h1 ends on a one-word orphan', async ({ page }) => {
+  await page.goto('/');
+  // At the project default — 1280 desktop, 390 mobile. Balanced, all three sentences
+  // break onto two lines carrying at least two words onto the second.
+  expect(await worstOrphan(page), 'a sentence in the h1 ends on a single stranded word')
+    .toBeGreaterThan(1);
+});
+
+// --- the tablet band ------------------------------------------------------------
+// Everything below runs at widths the two Playwright projects never visit. The orphan
+// test above only ever ran at 1280 and 390, which is exactly why it did not see the
+// defect: the hero split into two columns at md: (768) while Base.astro's max-w-4xl +
+// px-6 container does not reach its full 848px until viewport 896, so from 768 to 895
+// the text column was crushed to 332–398px. Measured before the fix, at 768: column
+// 332px, and both "department." and "conference." stranded alone on their own line.
+// 768 / 810 / 820 / 834 are iPad 9th, 10th, Air and Pro 11" in portrait; 895 is the
+// last pixel before the split.
+const BAND = [768, 810, 820, 834, 895];
+
+test('the h1 keeps its balanced wrap across the tablet band', async ({ page }) => {
+  for (const width of BAND) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.goto('/');
+    expect(await worstOrphan(page), `a sentence in the h1 strands one word at ${width}px`)
+      .toBeGreaterThan(1);
+  }
+});
+
+test('the hero text column stays full width across the tablet band', async ({ page }) => {
+  // The floor is 440px because that is just under the 460px the column locks at from 896
+  // up, and far above the 332–398px the md: split produced. This is the assertion that
+  // bites at 820, where the pre-fix column (384px) was still wide enough to avoid an
+  // orphan — the orphan test alone would have passed there.
+  for (const width of BAND) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.goto('/');
+    const m = await page.getByTestId('hero').evaluate((hero) => {
+      const col = hero.firstElementChild!;
+      const lead = hero.querySelector('p')!;
+      return {
+        col: col.getBoundingClientRect().width,
+        lead: lead.getBoundingClientRect().width,
+      };
+    });
+    expect(m.col, `hero text column is only ${m.col}px at ${width}px`).toBeGreaterThanOrEqual(440);
+    // max-w-[56ch] on the lead is 565.3px. Below ~613 the column is the binding
+    // constraint; through this band the cap must be what binds, not the column — that
+    // is the difference between a readable measure and a 332px one.
+    expect(m.lead, `the lead measures only ${m.lead}px at ${width}px`).toBeGreaterThanOrEqual(500);
+  }
+});
+
+test('the portrait shares both edges with the identity rule below the split', async ({ page }) => {
+  // The whole justification for max-w-[56ch] on the portrait: 56ch is the cap already on
+  // the lead and the identity block, so the photo's left and right edges land on exactly
+  // the same two verticals as the rule above it. Pinned at 280px it aligned to nothing —
+  // the rule ran to 327px at 375, 366px at 414 and 565.3px at 767 — and the photo read
+  // as a thumbnail that had failed to load.
+  for (const width of [375, 414, 613, 767, ...BAND]) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.goto('/');
+    const m = await page.getByTestId('hero').evaluate((hero) => {
+      const rule = hero.querySelector('.border-t-2')!.getBoundingClientRect();
+      const img = hero.querySelector('img')!.getBoundingClientRect();
+      return { ruleL: rule.left, ruleR: rule.right, imgL: img.left, imgR: img.right, imgW: img.width };
+    });
+    // Non-zero floor first: two collapsed boxes would otherwise "align" perfectly at 0.
+    expect(m.imgW, `the portrait collapsed at ${width}px`).toBeGreaterThan(200);
+    expect(Math.abs(m.imgL - m.ruleL),
+      `at ${width}px the portrait starts at ${m.imgL}, the rule at ${m.ruleL}`).toBeLessThan(1);
+    expect(Math.abs(m.imgR - m.ruleR),
+      `at ${width}px the portrait ends at ${m.imgR}, the rule at ${m.ruleR}`).toBeLessThan(1);
+  }
+
+  // Pinned from above as well, or "below the split" is satisfiable by never splitting:
+  // at 896 — the first width at which max-w-4xl stops growing — the portrait must be
+  // beside the text column, not under it.
+  await page.setViewportSize({ width: 896, height: 1024 });
+  await page.goto('/');
+  const gap = await page.getByTestId('hero').evaluate((hero) =>
+    hero.querySelector('img')!.getBoundingClientRect().left
+    - hero.querySelector('.border-t-2')!.getBoundingClientRect().right);
+  expect(gap, 'the hero did not split into two columns at 896px').toBeGreaterThan(0);
 });
 
 test('page states no ambition or forward-looking claim', async ({ page }) => {

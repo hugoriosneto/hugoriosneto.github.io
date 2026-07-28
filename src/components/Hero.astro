@@ -9,15 +9,38 @@ const legendLinks = {
 };
 const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:border-[var(--acc)]';
 ---
-<!-- Two columns from md up, one below. On a phone the grid collapses and the figure
-     lands after the identity block: the h1 is the strongest claim on the site and has
-     to be the first thing on a small screen, ahead of the portrait. -->
-<section data-testid="hero" class="grid gap-10 py-16 md:grid-cols-[minmax(0,1fr)_auto] md:items-start md:gap-12">
+<!-- Two columns from 56rem (896px) up, one below. NOT md: (768px). Base.astro's
+     container is max-w-4xl + px-6, so content only reaches its full 848px at an 896px
+     viewport; 896 is precisely where max-w-4xl stops growing and the text column locks
+     at its permanent 460px. Splitting at 768 instead handed the text 332–398px while
+     the portrait kept a fixed 340px, which is the whole tablet band — iPad 9th (768),
+     10th (810), Air (820), Pro 11" (834) all portrait. Measured across 767 -> 768, a ONE
+     PIXEL change of viewport: the text column fell 719px -> 332px, the lead's measure
+     fell 576.5px -> 332px, the h1 gained two one-word orphan lines ("department." and
+     "conference." each alone), and the hero collapsed 1059.1px -> 840.7px. max-w-[23ch]
+     on the h1 (457.3px) and max-w-[56ch] on the lead (565.3px) were both inert from 768
+     to 895, because the column was narrower than either cap.
+     On a phone the grid collapses and the figure lands after the identity block: the
+     h1 is the strongest claim on the site and has to be the first thing on a small
+     screen, ahead of the portrait. -->
+<section data-testid="hero" class="grid gap-10 py-16 min-[56rem]:grid-cols-[minmax(0,1fr)_auto] min-[56rem]:items-start min-[56rem]:gap-12">
   <div>
-    <!-- text-balance on each sentence: without it max-w-[23ch] produces the identical
-         wrap at every width from 414px to 1440px, leaving a one-word orphan on all three
-         lines — one of them the four-character "lab." Balanced, each sentence breaks as
-         "Brazil's first club / analytics department." at every width. -->
+    <!-- text-balance on each sentence. Both halves of this are measured, in Chromium and
+         WebKit, on the built page with the fonts loaded — an earlier version of this
+         comment claimed the balanced wrap held "at every width" and that was false at 768
+         and 810 for as long as the hero split at md:.
+
+         Without text-balance (measured by deleting it and rebuilding): at 414, 768, 820,
+         896, 1280 and 1440 all three sentences land a single word on their second line —
+         "department.", "lab.", "conference." — one of them the four-character "lab."
+
+         With it: at 375, 390, 414, 612, 613, 767, 768, 810, 820, 834, 895, 896, 1024,
+         1280 and 1440 every sentence occupies exactly two lines and carries at least two
+         words onto the second, S1 breaking "Brazil's first club / analytics department."
+         identically at all fifteen. That holds down to a 312px text column (viewport 360);
+         below it — measured at 320, 330, 340, 350 — the column is too narrow for the
+         balanced break and S1 goes to three lines ending on "department." No claim is
+         made here about widths under 360. -->
     <h1 class="mb-6 max-w-[23ch] font-serif text-[clamp(1.9rem,5vw,2.35rem)] font-normal leading-[1.24] tracking-[-0.022em]">
       <span class="block text-balance">Brazil's <span class="highlight">first</span> club analytics department.</span>
       <span class="block text-balance">Its <span class="highlight">first</span> sports analytics lab.</span>
@@ -60,20 +83,38 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
   <!-- eager + fetchpriority="high", never loading="lazy": on desktop this sits above
        the fold and is the LCP element, so a lazy load would defer the very paint
        Lighthouse measures.
-       widths + sizes rather than densities, so a phone downloads the 280px candidate
-       instead of the desktop asset.
+       widths + sizes rather than densities: densities emits 1x/2x descriptors, which
+       force every viewport to reason from the desktop candidate.
        The astro:assets import carries the intrinsic 1260x1575, so width/height ship in
        the markup and the box is reserved before the bytes arrive — no layout shift.
+
+       Below 56rem the portrait is w-full capped at max-w-[56ch] — the SAME cap the lead
+       paragraph and the identity block already carry, so the photo's left and right
+       edges land on exactly the same two verticals as the rule above it at every width
+       below the breakpoint. It was previously pinned to 280px while that rule ran to
+       327px (at 375), 366px (at 414) and 565px (at 767), so its right edge aligned to
+       nothing and it read as a thumbnail that had failed to load. 56ch measures 565.3px.
+
+       The sizes list tracks those CSS boundaries exactly, or the tablet band downloads
+       the wrong candidate: 340px from 896 up; 565px from 613 (where the 56ch cap starts
+       binding — 565.3 + 48px of px-6 gutters) to 895; viewport minus the gutters below
+       that. 1130 = 565 at 2x, 680 = 340 at 2x. There is DELIBERATELY no candidate above
+       1130: a DPR3 phone then takes the largest available rather than pulling a 3x
+       asset. That is the standard 2x-ceiling trade and it is what keeps the bytes sane —
+       do not "complete" the list with a 1695.
+
        The border is load-bearing, not decoration: the subject wears cream against a
        cream wall and the page background is cream, so without a defined edge the
-       photograph has no boundary and bleeds into the page. -->
+       photograph has no boundary. It uses --frame (2.62:1 on --bg), not --cardline,
+       which measures 1.18:1 — a border that asserted an edge without drawing one, and
+       left the photo's pale top corners visibly dissolving into the page. -->
   <figure class="m-0">
     <Image src={portrait}
            alt="Hugo Rios-Neto at RSC Anderlecht's honours wall."
-           widths={[280, 340, 560, 680]}
-           sizes="(min-width: 768px) 340px, 280px"
+           widths={[280, 340, 400, 565, 680, 800, 1130]}
+           sizes="(min-width: 896px) 340px, (min-width: 613px) 565px, calc(100vw - 3rem)"
            loading="eager"
            fetchpriority="high"
-           class="w-[280px] max-w-full rounded-xl border border-[var(--cardline)] md:w-[340px]" />
+           class="w-full max-w-[56ch] rounded-xl border border-[var(--frame)] min-[56rem]:w-[340px]" />
   </figure>
 </section>

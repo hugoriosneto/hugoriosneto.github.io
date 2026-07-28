@@ -46,10 +46,17 @@ function composite(rgba: string, bgHex: string): string {
 
 const TEXT_TOKENS = ['ink', 'dim', 'faint', 'acc', 'acc2'] as const;
 /* --award-fg sits on the yellow badge fill, not on --bg or --card, so it is classified
-   as text but checked against its own surface in a dedicated case below. */
+   as text but checked against its own surface in a dedicated case below.
+
+   --frame is classified `edge`, NOT text, and that classification is the point: it is a
+   photo hairline at 2.62:1, so the moment it appears in TEXT_TOKENS the AA suite goes
+   red. Keeping it out of `text` is therefore not an exemption from testing — the `edge`
+   case below pins it inside a 2.4–3.0:1 band, which is a tighter constraint than 4.5:1
+   would be, because it has a ceiling as well as a floor. */
 const CLASSIFIED = {
   surface: ['bg', 'card', 'hair', 'hair2', 'cardline'],
   text: [...TEXT_TOKENS, 'award-fg'],
+  edge: ['frame'],
   fill: ['accfill', 'mark', 'award-line', 'poster'],
   nonColour: ['font-display', 'font-body'],
 };
@@ -78,6 +85,26 @@ describe('design tokens', () => {
     expect(contrastRatio(token('accfill'), token('bg'))).toBeGreaterThanOrEqual(3);
     expect(contrastRatio(token('accfill'), token('bg'))).toBeLessThan(4.5);
     expect(contrastRatio('#ffffff', token('accfill'))).toBeLessThan(4.5);
+  });
+
+  it('keeps --frame a visible photo hairline: not invisible, not a black box', () => {
+    // The portrait is a cream subject against a cream wall on a cream page, so its edge
+    // is drawn, not natural. --cardline was doing that job at 1.18:1 on --bg, which is
+    // no edge at all: the photo's pale top corners dissolved into the background.
+    //
+    // Two-sided on purpose. A floor alone lets someone "soften" it back toward
+    // --cardline; a ceiling alone lets it drift to near-black, which turns a hairline
+    // into a frame that outshouts the photograph. 2.4–3.0 brackets the measured 2.62:1
+    // on --bg closely enough that either drift fails on the next run.
+    const onBg = contrastRatio(token('frame'), token('bg'));
+    expect(onBg, `--frame is ${onBg.toFixed(2)}:1 on --bg`).toBeGreaterThanOrEqual(2.4);
+    expect(onBg, `--frame is ${onBg.toFixed(2)}:1 on --bg`).toBeLessThanOrEqual(3.0);
+    // It must also out-contrast the token it replaced, or the change was cosmetic.
+    expect(onBg).toBeGreaterThan(contrastRatio(token('cardline'), token('bg')));
+    // And it is emphatically not a text colour — this is the assertion that keeps a
+    // later "reuse --frame for the separators" from passing review.
+    expect(onBg, '--frame must never become legible enough to invite text use')
+      .toBeLessThan(4.5);
   });
 
   it('keeps the award badge legible on its own fill, on both surfaces it sits on', () => {

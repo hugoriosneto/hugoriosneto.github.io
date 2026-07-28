@@ -6,6 +6,14 @@
   --hair2: #ddd0a4;
   --cardline: #ece1bc;
 
+  /* Photo edges only. --cardline is 1.18:1 on --bg, which is not an edge — a cream
+     subject on a cream wall simply dissolves into the page at its pale corners.
+     --frame measures 2.62:1 on --bg and 2.87:1 on --card: a visible hairline, still
+     well short of a heavy black box. NOT a text colour, and never used as one —
+     tokens.test.ts classifies it as an edge and holds it in a 2.4–3.0:1 band so it
+     cannot drift into either invisibility or a border that outshouts the photograph. */
+  --frame: #ab9560;
+
   /* Text — every one of these is contrast-tested in tests/unit/tokens.test.ts */
   --ink: #151a15;
   --dim: #575849;

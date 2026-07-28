@@ -47,7 +47,13 @@ const C = {
     <span>2021</span><span>now</span>
   </div>
 
-  <div class="grid gap-8 md:grid-cols-[1.15fr_1fr]">
+  <!-- min-[56rem]:, matching Hero.astro, so the page has ONE tablet boundary instead of
+       two. At md: (768px) the 1fr chip column resolved to 320px against ~326px of chips,
+       which tipped the 12 capability chips out of 3-per-row into a 12-row single-file
+       stack and grew this section by ~250px — in the same band where the hero was
+       already splitting too early. Both columns here depend on the container being at
+       full width, so both move together. -->
+  <div class="grid gap-8 min-[56rem]:grid-cols-[1.15fr_1fr]">
     <!-- aria-live so arrowing between stops announces the new role rather than changing
          silently behind a screen-reader user. Not on the chip list — 12 items per change
          would be unusable. -->

@@ -103,6 +103,40 @@ test('the play control walks through every stop', async ({ page }) => {
   await expect(page.getByTestId('trajectory-detail')).toContainText('RSC Anderlecht', { timeout: 8000 });
 });
 
+test('splits on the same 896 boundary as the hero, so the chips never single-file', async ({ page }) => {
+  // The trajectory used to split at md: (768) while the hero splits at 896. At 768 the
+  // 1fr chip column resolved to 320px against ~326px of chips, which tipped all 12
+  // capability chips into a 12-row single-file stack and grew this section by ~250px.
+  // Measured before the fix: 12 rows at 768, 810 and 820; after: 4, 4 and 3.
+  for (const width of [768, 810, 820]) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.goto('/');
+    const m = await page.evaluate(() => {
+      const chips = document.getElementById('traj-chips')!;
+      const rows = new Set([...chips.children].map((c) => Math.round(c.getBoundingClientRect().top)));
+      const detail = document.getElementById('traj-detail')!.getBoundingClientRect();
+      return { count: chips.children.length, rows: rows.size, detailL: detail.left,
+               chipsL: chips.getBoundingClientRect().left };
+    });
+    // Guard the denominator: 12 chips must actually be on screen, or "few rows" is free.
+    expect(m.count, `only ${m.count} chips rendered at ${width}px`).toBe(12);
+    expect(m.rows, `the 12 chips stacked into ${m.rows} rows at ${width}px`).toBeLessThanOrEqual(6);
+    // Stacked, not columned — the chip block starts at the detail block's left edge.
+    expect(Math.abs(m.chipsL - m.detailL),
+      `at ${width}px the trajectory is still two columns`).toBeLessThan(1);
+  }
+
+  // And it does split, at the same pixel the hero does.
+  await page.setViewportSize({ width: 896, height: 1024 });
+  await page.goto('/');
+  const split = await page.evaluate(() => {
+    const chips = document.getElementById('traj-chips')!.getBoundingClientRect();
+    const detail = document.getElementById('traj-detail')!.getBoundingClientRect();
+    return chips.left - detail.right;
+  });
+  expect(split, 'the trajectory did not split into two columns at 896px').toBeGreaterThan(0);
+});
+
 test('the final stop is server-rendered, so it survives with JavaScript off', async ({ browser }) => {
   // The script is is:inline, so this covers content blockers, any future CSP (Astro
   // does not hash or nonce inline scripts) and crawlers that do not run JS —
