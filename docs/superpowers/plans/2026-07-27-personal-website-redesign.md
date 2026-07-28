@@ -3345,7 +3345,11 @@ const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62r
     <span class="text-xs text-[var(--dim)]">play here, or open on {talk.provider}</span>
   </a>
   <div class="p-4">
-    <h3 class="text-[0.9rem] font-semibold leading-snug">{talk.title}</h3>
+    <!-- h2, not h3: /talks has no section heading between its h1 and this grid, unlike
+         the homepage and SALab pages where a SectionHead h2 precedes their h3 cards. As
+         an h3 this skipped a level. axe tags heading-order as best-practice only, so the
+         wcag-filtered gate could not see it. -->
+    <h2 class="text-[0.9rem] font-semibold leading-snug">{talk.title}</h2>
     <p class="mt-1 text-xs leading-relaxed text-[var(--faint)]">{talk.description}</p>
     <div class="mt-2.5 flex flex-wrap gap-1.5">
       {talk.award && <span class="rounded-full border border-[var(--award-line)] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--award-fg)]">{talk.award}</span>}
@@ -3934,13 +3938,18 @@ git commit -m "feat: add favicon, 404, OG image and redirect coverage"
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const PAGES = ['/', '/research', '/salab-fame', '/talks', '/cv'];
+// /404 included: Astro emits it as a real, renderable page, and a page absent from this
+// list has no accessibility gate at all.
+const PAGES = ['/', '/research', '/salab-fame', '/talks', '/cv', '/404'];
 
 for (const path of PAGES) {
   test(`${path} has no axe violations`, async ({ page }) => {
     await page.goto(path);
     const results = await new AxeBuilder({ page })
-      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      // best-practice included deliberately. axe tags `heading-order` as best-practice
+      // only, so a wcag-only filter cannot see a skipped heading level — and one shipped
+      // on /talks until Lighthouse's unfiltered run caught it.
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice'])
       .analyze();
     expect(results.violations).toEqual([]);
   });
@@ -3997,7 +4006,8 @@ Spec §9 requires Lighthouse ≥ 95 on all four categories. Create `lighthouserc
         "http://localhost/research/index.html",
         "http://localhost/salab-fame/index.html",
         "http://localhost/talks/index.html",
-        "http://localhost/cv/index.html"
+        "http://localhost/cv/index.html",
+        "http://localhost/404.html"
       ],
       "numberOfRuns": 1
     },
