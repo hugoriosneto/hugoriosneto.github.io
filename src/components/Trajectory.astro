@@ -5,88 +5,137 @@ import SectionHead from './SectionHead.astro';
 const roles = (await getCollection('roles')).sort((a, b) => a.data.order - b.data.order);
 const data = roles.map((r) => r.data);
 const last = data.length - 1;
+
+/* Shared by the server-rendered markup below and the script's innerHTML. */
+const C = {
+  verb: 'text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]',
+  org: 'text-2xl font-semibold tracking-tight',
+  role: 'mb-2 text-sm font-semibold text-[var(--acc)]',
+  blurb: 'max-w-[46ch] leading-relaxed text-[var(--dim)]',
+  chip: 'rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs',
+  fresh: 'border-[var(--acc)] font-semibold text-[var(--acc)]',
+  stale: 'border-[var(--cardline)] text-[var(--dim)]',
+};
 ---
 <section class="border-t border-[var(--hair)] py-12">
   <SectionHead kicker="Trajectory" sub="click through — what each role added stays on screen" />
 
+  <div class="mb-2 flex justify-end">
+    <!-- Discoverability: on touch there is no hover, so without this the interaction is
+         "poke an unlabelled dot and see what changes". Spec §6 calls for it. -->
+    <button type="button" id="traj-play"
+            class="rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--dim)] hover:border-[var(--acc)] hover:text-[var(--acc)]">
+      <span aria-hidden="true">▶</span> Play
+    </button>
+  </div>
+
   <div class="relative mb-1 h-10" data-testid="trajectory-rail">
     <div class="absolute left-2 right-2 top-[19px] h-0.5 bg-[var(--hair2)]"></div>
     <div id="traj-progress" class="absolute left-2 top-[19px] h-0.5 transition-[width] duration-500"
-         style="background:linear-gradient(90deg,var(--accfill),#FEDD00)"></div>
+         style={`background:linear-gradient(90deg,var(--accfill),#FEDD00);width:calc(${data[last].position}% - 8px)`}></div>
     {data.map((r, i) => (
       <button type="button"
-              class="traj-stop absolute top-2.5 -ml-2.5 h-5 w-5 rounded-full border-2 border-[var(--hair2)] bg-[var(--card)] transition-transform duration-200 hover:border-[var(--acc)]"
+              class={`traj-stop absolute top-2.5 -ml-2.5 h-5 w-5 rounded-full border-2 border-[var(--acc)] transition-transform duration-200 ${i === last ? 'scale-125 bg-[var(--accfill)]' : 'bg-[var(--card)]'}`}
               style={`left:${r.position}%`}
-              data-index={i}
+              aria-controls="traj-detail"
               aria-label={`${r.org}, ${r.dates}`}
               aria-current={i === last ? 'true' : 'false'}></button>
     ))}
   </div>
 
   <div class="mb-7 flex justify-between text-xs text-[var(--faint)]">
-    <span>2021</span><span>2023</span><span>2025</span><span>now</span>
+    <span>2021</span><span>now</span>
   </div>
 
   <div class="grid gap-8 md:grid-cols-[1.15fr_1fr]">
-    <div data-testid="trajectory-detail"></div>
+    <!-- aria-live so arrowing between stops announces the new role rather than changing
+         silently behind a screen-reader user. Not on the chip list — 12 items per change
+         would be unusable. -->
+    <div id="traj-detail" data-testid="trajectory-detail" aria-live="polite">
+      <div class={C.verb}>{data[last].verb}</div>
+      <div class={C.org}>{data[last].org}</div>
+      <div class={C.role}>{data[last].title} · {data[last].dates}</div>
+      <p class={C.blurb}>{data[last].blurb}</p>
+    </div>
     <div>
-      <div class="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">What it added</div>
-      <ul data-testid="trajectory-chips" class="m-0 flex list-none flex-wrap gap-1.5 p-0"></ul>
+      <h3 id="traj-added" class="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">What it added</h3>
+      <!-- role="list" because Tailwind's list-none sets list-style: none, which makes
+           Safari drop list semantics entirely. Same fix applies in Footer.astro. -->
+      <ul id="traj-chips" data-testid="trajectory-chips" role="list" aria-labelledby="traj-added"
+          class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+        {data.flatMap((role, k) => role.capabilities.map((c) => (
+          <li class={`${C.chip} ${k === last ? C.fresh : C.stale}`}>
+            {c}{k === last && <span class="sr-only"> (new)</span>}
+          </li>
+        )))}
+      </ul>
     </div>
   </div>
 </section>
 
-<script is:inline define:vars={{ data }}>
+<script is:inline define:vars={{ data, C, last }}>
   (() => {
-    // Content comes from YAML and is interpolated into innerHTML below. Nothing in
-    // the data needs markup, so escape it rather than trusting future entries.
+    /* Content comes from YAML and is interpolated into innerHTML below. Nothing in
+       the data needs markup, so escape it rather than trusting future entries. */
     const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const stops = Array.from(document.querySelectorAll('.traj-stop'));
-    const detail = document.querySelector('[data-testid="trajectory-detail"]');
-    const chips = document.querySelector('[data-testid="trajectory-chips"]');
+    /* Queried by id, not data-testid: a test hook must never be load-bearing for
+       production behaviour. */
+    const detail = document.getElementById('traj-detail');
+    const chips = document.getElementById('traj-chips');
     const progress = document.getElementById('traj-progress');
+    const play = document.getElementById('traj-play');
     if (!stops.length || !detail || !chips || !progress) return;
+    let timer = null;
 
     function select(i) {
       stops.forEach((el, j) => {
         el.setAttribute('aria-current', j === i ? 'true' : 'false');
         el.classList.toggle('scale-125', j === i);
         el.style.background = j === i ? 'var(--accfill)' : 'var(--card)';
-        el.style.borderColor = j <= i ? 'var(--acc)' : 'var(--hair2)';
       });
       progress.style.width = `calc(${data[i].position}% - 8px)`;
 
       const r = data[i];
       detail.innerHTML =
-        `<div class="text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]">${esc(r.verb)}</div>` +
-        `<div class="text-2xl font-semibold tracking-tight">${esc(r.org)}</div>` +
-        `<div class="mb-2 text-sm font-semibold text-[var(--acc)]">${esc(r.title)} · ${esc(r.dates)}</div>` +
-        `<p class="max-w-[46ch] leading-relaxed text-[var(--dim)]">${esc(r.blurb)}</p>`;
+        `<div class="${C.verb}">${esc(r.verb)}</div>` +
+        `<div class="${C.org}">${esc(r.org)}</div>` +
+        `<div class="${C.role}">${esc(r.title)} · ${esc(r.dates)}</div>` +
+        `<p class="${C.blurb}">${esc(r.blurb)}</p>`;
 
       chips.innerHTML = data.slice(0, i + 1).flatMap((role, k) =>
         role.capabilities.map((c) => {
-          const fresh = k === i
-            ? 'border-[var(--acc)] text-[var(--acc)] font-semibold'
-            : 'border-[var(--cardline)] text-[var(--dim)]';
-          return `<li class="rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs ${fresh}">${esc(c)}</li>`;
+          /* The visually-hidden "(new)" is not decoration: freshness is otherwise
+             encoded only in border and text colour, which fails 1.4.1 for low-vision
+             sighted users as well as being invisible to AT. */
+          const state = k === i ? C.fresh : C.stale;
+          const flag = k === i ? '<span class="sr-only"> (new)</span>' : '';
+          return `<li class="${C.chip} ${state}">${esc(c)}${flag}</li>`;
         })
       ).join('');
     }
 
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
     stops.forEach((el, i) => {
-      el.addEventListener('click', () => select(i));
+      el.addEventListener('click', () => { stop(); select(i); });
       el.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        const keys = { ArrowRight: Math.min(i + 1, stops.length - 1), ArrowLeft: Math.max(i - 1, 0),
+                       Home: 0, End: stops.length - 1 };
+        if (!(e.key in keys)) return;
         e.preventDefault();
-        const next = e.key === 'ArrowRight'
-          ? Math.min(i + 1, stops.length - 1)
-          : Math.max(i - 1, 0);
-        stops[next].focus();
-        select(next);
+        stop();
+        stops[keys[e.key]].focus();
+        select(keys[e.key]);
       });
     });
 
-    select(stops.length - 1);
+    play?.addEventListener('click', () => {
+      stop();
+      let i = 0;
+      select(0);
+      timer = setInterval(() => { i += 1; if (i > last) return stop(); select(i); }, 1100);
+    });
   })();
 </script>

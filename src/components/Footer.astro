@@ -12,7 +12,9 @@ const links = [
     <div class="font-semibold text-[var(--ink)]">Hugo Rios-Neto</div>
     <div class="text-sm text-[var(--faint)]">Data Recruitment Lead, RSC Anderlecht</div>
   </div>
-  <ul class="ml-auto flex flex-wrap gap-5 text-sm list-none p-0 m-0">
+  <!-- role="list": Tailwind's list-none sets list-style: none, which makes Safari drop
+       list semantics entirely, so VoiceOver would not announce this as a list. -->
+  <ul role="list" class="ml-auto flex flex-wrap gap-5 text-sm list-none p-0 m-0">
     {links.map((l) => (
       <li><a class="text-[var(--dim)] no-underline hover:text-[var(--acc)]"
              href={l.href} rel="me noopener" target="_blank">{l.label}</a></li>
