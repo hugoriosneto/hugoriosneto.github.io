@@ -9,7 +9,7 @@ const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.dat
   <h1 class="pt-12 font-serif text-3xl font-normal tracking-tight">Talks &amp; media</h1>
   <p class="mb-8 mt-1 max-w-[56ch] text-sm leading-relaxed text-[var(--dim)]">
     Conference talks, podcasts and webinars — in English and Portuguese. Nothing loads from
-    YouTube, Vimeo or Spotify until you ask for it.
+    YouTube or Vimeo until you ask for it.
   </p>
   <div class="grid gap-4 pb-6 sm:grid-cols-2">
     {talks.map((t) => <TalkCard talk={t.data} />)}

@@ -47,7 +47,7 @@ export const paperSchema = z.object({
 
 const EMBED_HOSTS = { youtube: 'www.youtube.com', vimeo: 'player.vimeo.com', spotify: 'open.spotify.com' };
 /* The canonical watch page, which is a different host from the player for Vimeo. Without
-   it the talks page has no <a> anywhere: with scripts off it renders six posters that
+   it the talks page has no <a> anywhere: with scripts off it renders posters that
    never load and no way to reach any of the media it exists to surface. */
 const WATCH_HOSTS = { youtube: 'www.youtube.com', vimeo: 'vimeo.com', spotify: 'open.spotify.com' };
 

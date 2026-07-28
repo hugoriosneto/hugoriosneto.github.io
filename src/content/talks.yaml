@@ -20,17 +20,6 @@
   credit: Host
   order: 2
 
-- id: winning-with-data
-  title: Winning With Data
-  description: Co-host of the February 2024 episode, with Jesse Davis as the guest.
-  provider: spotify
-  embedUrl: https://open.spotify.com/embed/episode/5XGkEVHPcN7hxFQZiwrZeE?si=404dbca0dadd4b65
-  url: https://open.spotify.com/episode/5XGkEVHPcN7hxFQZiwrZeE
-  language: EN
-  format: Podcast
-  credit: Co-host
-  order: 3
-
 - id: barca-innovation-hub
   title: Barça Innovation Hub webinar
   description: FC Barcelona, June 2021 — opening a webinar series promoting the 2021 Sports Tomorrow Congress.
@@ -39,7 +28,7 @@
   url: https://www.youtube.com/watch?v=JC38450JDlc
   language: EN
   format: Webinar
-  order: 4
+  order: 3
 
 - id: footstats
   title: Footstats live
@@ -49,7 +38,7 @@
   url: https://www.youtube.com/watch?v=BtLmS6IDsHk
   language: PT
   format: Live
-  order: 5
+  order: 4
 
 - id: sports-tomorrow-2020
   title: Analytics in Sports Tomorrow Congress
@@ -59,4 +48,4 @@
   url: https://www.youtube.com/watch?v=MyqzmCHs_iw
   language: EN
   format: Conference
-  order: 6
+  order: 5

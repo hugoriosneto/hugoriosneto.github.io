@@ -158,7 +158,7 @@ Filters were considered and rejected: four papers and six talks do not justify t
 
 - **Research** — rows expand in place to reveal co-authors and links, so nobody leaves the page to find a PDF.
 - **SALab & FAME** — a five-edition switcher for FAME. The growth *is* the argument; clicking 2022 → 2026 makes a reader feel it.
-- **Talks** — embeds stay as posters until clicked. Six autoloading iframes across YouTube, Vimeo and Spotify would be the heaviest thing on the site by a wide margin. Language (EN/PT) and format are **tags, not filters**.
+- **Talks** — embeds stay as posters until clicked. Autoloading an iframe per talk across YouTube and Vimeo would be the heaviest thing on the site by a wide margin. Language (EN/PT) and format are **tags, not filters**.
 - **CV** — print stylesheet, so ⌘P produces the PDF and there is no second document to keep in sync.
 
 ### Motion
@@ -233,7 +233,6 @@ Six entries, poster-until-clicked, tagged by language and format.
 |---|---|---|
 | Opta Pro Forum — Algorithm Track | Stats Perform, Mar 2023, with Van Roy, Meira Jr. & Davis. Vimeo | **Winner**, EN, Conference |
 | Data Footure | Podcast hosted with Caio Batatinha for Footure. YouTube playlist | PT, Podcast, Host |
-| Winning With Data | Co-host, Feb 2024, guest Jesse Davis. Spotify | EN, Podcast, Co-host |
 | Footstats live | Mar 2022. YouTube | PT, Live |
 | Barça Innovation Hub webinar | FC Barcelona, Jun 2021. YouTube | EN, Webinar |
 | Analytics in Sports Tomorrow Congress | FC Barcelona, Nov 2020. YouTube | EN, Conference |
