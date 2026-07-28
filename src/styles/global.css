@@ -45,9 +45,22 @@ html {
 
    The emphasis rides entirely on a background gradient, and two standard rendering
    modes strip backgrounds: Chrome's print default (Background graphics unchecked)
-   and Windows High Contrast. Without these two lines the three "first" marks vanish
-   silently, leaving three plain sentences and no trace of the site's central device.
-   Verified against a rasterised PDF and forcedColors: active. */
+   and Windows High Contrast. Without the two fallbacks below the three "first" marks
+   vanish silently, leaving three plain sentences and no trace of the site's central
+   device. Verified against a rasterised PDF and forcedColors: active.
+
+   The forced-colors fallback is a system-colour border ONLY. It used to also carry
+   `forced-color-adjust: none`, on the theory that keeping the yellow band was better
+   than losing it. Measured in Chromium under emulateMedia({ forcedColors: 'active',
+   colorScheme: 'dark' }), that opt-out was actively harmful: it held .highlight at the
+   authored rgb(21,26,21) while its h1 was forced to rgb(255,255,255) on a rgb(0,0,0)
+   Canvas — 1.20:1 for the upper 60% of every "first" glyph, the part the gradient
+   does not cover. Three near-invisible words in the site's one headline. Dropping the
+   line lets the word inherit the forced palette (21:1) and Chromium drops the gradient
+   with it, so nothing is left at low contrast. `Highlight` is a system colour and
+   survives forced-colors WITHOUT any opt-out — measured rgba(0,230,255,0.8) dark /
+   rgba(5,0,73,0.8) light in Chromium, rgba(128,188,254,0.6) in WebKit — so the marker
+   still reads as a marker. Do not reintroduce forced-color-adjust here. */
 .highlight {
   background: linear-gradient(transparent 60%, var(--mark) 60%);
   print-color-adjust: exact;
@@ -55,7 +68,6 @@ html {
 }
 @media (forced-colors: active) {
   .highlight {
-    forced-color-adjust: none;
     border-bottom: 0.32em solid Highlight;
   }
 }

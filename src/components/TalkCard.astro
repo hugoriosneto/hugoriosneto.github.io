@@ -8,10 +8,21 @@ const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62r
        the page exists to surface — and the embedUrl is a player URL, so it was not
        recoverable by hand either. The script calls preventDefault() and swaps in the
        iframe; without it, the poster is simply a link that opens the talk. -->
+  <!-- The title is a visually-hidden span INSIDE the link, not an aria-label on it.
+       All five posters carry the same visible copy, so something has to tell them apart
+       for a screen-reader user listing links (WCAG 2.4.4). The obvious move —
+       aria-label="Watch <title> on vimeo" — buys 2.4.4 by breaking 2.5.3 Label in Name:
+       aria-label REPLACES the accessible name, so the words on screen ("play here, or
+       open on vimeo") appear nowhere in it, and a speech-input user who says what they
+       can read matches nothing. Composing the name from content instead gives
+       "<title> play here, or open on vimeo": unique per link AND containing the visible
+       string verbatim. The title leads so the disambiguator is heard first.
+       sr-only, matching the "(new)" flag in Trajectory.astro; it is position:absolute,
+       so it takes no part in this flex column's layout. -->
   <a class="talk-frame flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 bg-[var(--poster)] no-underline"
-     href={talk.url} data-embed={talk.embedUrl} target="_blank" rel="noopener"
-     aria-label={`Watch ${talk.title} on ${talk.provider}`}>
+     href={talk.url} data-embed={talk.embedUrl} target="_blank" rel="noopener">
     <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
+    <span class="sr-only">{talk.title}</span>
     <span class="text-xs text-[var(--dim)]">play here, or open on {talk.provider}</span>
   </a>
   <div class="p-4">

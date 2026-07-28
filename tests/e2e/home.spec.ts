@@ -231,21 +231,85 @@ test('both "Co-" role clauses use a non-breaking hyphen', async ({ page }) => {
   expect(text, 'an ASCII hyphen came back in a "Co-" clause').not.toMatch(/Co-(founder|organizer)/);
 });
 
-test('the highlighter survives print and forced-colors', async ({ page }) => {
+/** WCAG 2.1 contrast ratio between two `rgb()`/`rgba()` strings, alpha ignored. */
+const ratio = (a: string, b: string) => {
+  const lum = (c: string) => {
+    const [r, g, b2] = c.match(/[\d.]+/g)!.slice(0, 3).map((v) => {
+      const s = Number(v) / 255;
+      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b2;
+  };
+  const [hi, lo] = lum(a) > lum(b) ? [lum(a), lum(b)] : [lum(b), lum(a)];
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+// The emphasis is a background gradient, and both print and forced-colors strip
+// backgrounds by default — leaving three plain sentences with no trace of the site's
+// central device, and no error anywhere.
+//
+// The forced-colors half of this used to assert only borderBottomWidth > 0, which is
+// blind to the failure that was actually shipping: `forced-color-adjust: none` on
+// .highlight held the word at the authored ink while its h1 was forced to white on a
+// black Canvas — 1.20:1, measured. Width alone cannot see that, because the border is
+// declared in the same rule and stays 12px either way. So compare the word against its
+// own h1 and against Canvas instead, which is where the defect lives.
+test('the highlighter survives print and forced-colors', async ({ page, browserName }) => {
   await page.goto('/');
-  // The emphasis is a background gradient, and both of these modes strip backgrounds
-  // by default — leaving three plain sentences with no trace of the site's central
-  // device, and no error anywhere.
   await page.emulateMedia({ media: 'print' });
   const printAdjust = await page.locator('.highlight').first()
     .evaluate((el) => getComputedStyle(el).printColorAdjust || (getComputedStyle(el) as any).webkitPrintColorAdjust);
   expect(printAdjust).toBe('exact');
 
-  await page.emulateMedia({ media: 'screen', forcedColors: 'active' });
-  const forced = await page.locator('.highlight').first()
-    .evaluate((el) => getComputedStyle(el).borderBottomWidth);
-  expect(parseFloat(forced)).toBeGreaterThan(0);
-  await page.emulateMedia({ media: 'screen', forcedColors: 'none' });
+  // Both palettes, DARK FIRST. Chromium picks the forced palette off prefers-color-scheme,
+  // and the regression this guards is invisible in the light one (17.6:1) — only dark
+  // exposes it, so checking light first would just report a downstream symptom.
+  // expect.soft throughout: these five readings describe one state, and seeing "1.20:1 on
+  // Canvas" together with "opted out of the forced palette" and "gradient survived" is the
+  // whole diagnosis. Hard-failing on the first would report one third of it.
+  for (const colorScheme of ['dark', 'light'] as const) {
+    await page.emulateMedia({ media: 'screen', forcedColors: 'active', colorScheme });
+    const m = await page.locator('.highlight').first().evaluate((el) => {
+      const cs = getComputedStyle(el);
+      const h1 = el.closest('h1') as HTMLElement;
+      // Read the live system colour rather than hard-coding a palette: Chromium and
+      // WebKit resolve `Highlight` to different values, and both are legitimate.
+      const probe = document.createElement('span');
+      probe.style.color = 'Highlight';
+      h1.appendChild(probe);
+      const sysHighlight = getComputedStyle(probe).color;
+      probe.remove();
+      return {
+        color: cs.color,
+        backgroundImage: cs.backgroundImage,
+        borderWidth: parseFloat(cs.borderBottomWidth),
+        borderColor: cs.borderBottomColor,
+        h1Color: getComputedStyle(h1).color,
+        canvas: getComputedStyle(document.documentElement).backgroundColor,
+        sysHighlight,
+      };
+    });
+
+    // The fallback mark itself, in both engines: present, and painted in the system
+    // Highlight — a literal hex here would be forced to CanvasText and disappear into
+    // the text colour, which is exactly what `Highlight` is chosen to avoid.
+    expect.soft(m.borderWidth, `${colorScheme}: no forced-colors underline`).toBeGreaterThan(0);
+    expect.soft(m.borderColor, `${colorScheme}: underline is not the system Highlight`).toBe(m.sysHighlight);
+    expect.soft(m.borderColor, `${colorScheme}: underline is indistinguishable from the text`).not.toBe(m.h1Color);
+
+    // WebKit's forced-colors emulation flips the media query but does not force any
+    // palette — html stays cream, text stays authored ink — so the three assertions
+    // below have nothing to measure there and would pass vacuously.
+    if (browserName !== 'chromium') continue;
+
+    // The harm first, then the two mechanisms that cause it. This is the number the
+    // `forced-color-adjust: none` opt-out was producing before it was deleted.
+    expect.soft(ratio(m.color, m.canvas), `${colorScheme}: "first" is ${ratio(m.color, m.canvas).toFixed(2)}:1 on Canvas`)
+      .toBeGreaterThanOrEqual(4.5);
+    expect.soft(m.color, `${colorScheme}: .highlight opted out of the forced palette`).toBe(m.h1Color);
+    expect.soft(m.backgroundImage, `${colorScheme}: the gradient survived forced-colors`).toBe('none');
+  }
+  await page.emulateMedia({ media: 'screen', forcedColors: 'none', colorScheme: null });
 });
 
 /**

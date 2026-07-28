@@ -36,18 +36,15 @@ for (const path of PAGES) {
 // aria-hidden subtrees are stripped first — they are visible to the eye but excluded
 // from the accessible name, so counting them would invert the very comparison.
 //
-// KNOWN EXEMPTION, escalated rather than silently narrowed away: the five /talks video
-// links read "play here, or open on youtube|vimeo" but are named "Watch <talk title> on
-// youtube|vimeo". That is the documented 2.4.4-vs-2.5.3 tension — the label disambiguates
-// five otherwise identical links, and resolving it means rewriting the visible copy or
-// leading the name with a generic CTA. Both are editorial calls, so this gate records
-// them instead of pretending they pass. The exemption is self-expiring under BOTH routes:
-// the test fails if it matches nothing (the copy changed) and fails if a match no longer
-// violates (the label was fixed), so either resolution forces the entry to be deleted.
-const PENDING_LABEL_IN_NAME = 'play here, or open on';
+// The five /talks poster links used to sit here as a documented exemption: they read
+// "play here, or open on youtube|vimeo" but were named "Watch <talk title> on
+// youtube|vimeo", trading 2.5.3 for 2.4.4 because the label was the only thing telling
+// five identical-looking links apart. TalkCard.astro now composes the name from a
+// visually-hidden title inside the link instead, which satisfies both, so the exemption
+// expired as designed and is gone. Because those links no longer carry an aria-label at
+// all they fall outside this selector — talks.spec.ts asserts their exact composed names.
 test('every labelled control contains its visible text in its accessible name', async ({ page }) => {
   let checked = 0;
-  let exempted = 0;
   for (const path of PAGES) {
     await page.goto(path);
     const rows = await page.$$eval('a[aria-label], button[aria-label]', (els) =>
@@ -66,27 +63,14 @@ test('every labelled control contains its visible text in its accessible name', 
     for (const { visible, name } of rows) {
       const v = norm(visible);
       if (v === '') continue; // icon-only: no visible text label, 2.5.3 does not apply
-      if (v.startsWith(PENDING_LABEL_IN_NAME)) {
-        exempted++;
-        // The exemption has to still be NEEDED. Skipping outright would keep excusing
-        // these links after someone fixed them by prefixing the aria-label, since the
-        // visible copy — all this branch matches on — would be unchanged. Asserting the
-        // violation is still present is what makes the entry expire under either fix.
-        expect(norm(name), `${path}: "${visible.trim()}" now conforms — delete PENDING_LABEL_IN_NAME`)
-          .not.toContain(v);
-        continue;
-      }
       checked++;
       expect(norm(name), `${path}: visible "${visible.trim()}" is not in accessible name "${name}"`)
         .toContain(v);
     }
   }
-  // Both counters guard the loop itself. Without them a selector change that returned no
-  // rows would skip every assertion above and the test would pass having verified nothing
-  // — and a stale exemption would quietly keep excusing controls that were already fixed.
+  // The counter guards the loop itself. Without it a selector change that returned no
+  // rows would skip every assertion above and the test would pass having verified nothing.
   expect(checked, 'no labelled controls were checked at all').toBeGreaterThanOrEqual(6);
-  expect(exempted, `nothing matched "${PENDING_LABEL_IN_NAME}" — delete the exemption`)
-    .toBeGreaterThan(0);
 });
 
 test('every page has exactly one h1', async ({ page }) => {
