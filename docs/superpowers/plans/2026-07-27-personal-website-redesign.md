@@ -2385,7 +2385,9 @@ test('shows the two things built from nothing', async ({ page }) => {
   const built = page.getByTestId('built');
   await expect(built).toContainText('Sports Analytics Lab');
   await expect(built).toContainText('FAME');
-  await expect(built).toContainText('5');
+  // "fifth edition", not the digit 5: the count is spelled out because "across 5
+  // editions" implied five completed when the fifth is 28 September 2026.
+  await expect(built).toContainText('fifth edition');
 });
 
 test('Why Brazil uses the approved W2 copy', async ({ page }) => {
@@ -2421,6 +2423,11 @@ test('no section seam draws two parallel hairlines', async ({ page }) => {
     [...document.querySelectorAll('main *')]
       .filter((el) => {
         const cs = getComputedStyle(el);
+        // Structural rules only. `main *` alone also catches the capability chips, the
+        // rail's stop dots and the tag badges — small rounded pills that legitimately
+        // carry both a top and a bottom border. A structural rule spans the column;
+        // nothing decorative here is wider than 200px.
+        if (el.getBoundingClientRect().width < 200) return false;
         return parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
       })
       .flatMap((el) => {
@@ -2493,7 +2500,11 @@ const fame = await getCollection('fame');
       </article>
       <article class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
         <h3 class="text-lg font-semibold tracking-tight">FAME</h3>
-        <p class="mb-3 text-xs text-[var(--faint)]">Football Analytics: Modeling &amp; Experience · 2022–2026</p>
+        <!-- No date range: at 768px — a spec-mandated check width, and exactly where
+             md: turns two columns on — the longer string wrapped and grid-stretch left
+             the SALab card with 40px of dead space. The body copy below already carries
+             the edition count, and the SALab & FAME page carries every date. -->
+        <p class="mb-3 text-xs text-[var(--faint)]">Football Analytics: Modeling &amp; Experience</p>
         <p class="text-sm leading-relaxed text-[var(--dim)]">
           The first football analytics conference in Brazil, now in its
           {['first','second','third','fourth','fifth','sixth'][fame.length - 1] ?? `${fame.length}th`} edition —
