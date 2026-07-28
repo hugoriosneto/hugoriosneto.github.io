@@ -2363,7 +2363,7 @@ git commit -m "feat: add accumulating career trajectory"
 
 - [ ] **Step 1: Write the failing tests**
 
-Append to `tests/e2e/home.spec.ts`:
+Append these **four** tests to `tests/e2e/home.spec.ts`, which already holds six.
 ```ts
 test('shows the two things built from nothing', async ({ page }) => {
   await page.goto('/');
@@ -2398,7 +2398,7 @@ test('teasers link to the full pages', async ({ page }) => {
 - [ ] **Step 2: Run to verify it fails**
 
 Run: `npx playwright test tests/e2e/home.spec.ts --project=desktop`
-Expected: 3 new tests FAIL, the original 4 pass.
+Expected: the 4 new tests FAIL, the 6 existing ones pass.
 
 - [ ] **Step 3: Extend `src/pages/index.astro`**
 
@@ -2505,7 +2505,25 @@ const fame = await getCollection('fame');
 - [ ] **Step 4: Run the tests**
 
 Run: `npx playwright test tests/e2e/home.spec.ts --project=desktop`
-Expected: `8 passed`.
+Expected: `10 passed`.
+
+**On the 294px reflow, considered and declined.** With four sections now below the
+trajectory, clicking from the first stop to the last grows the chip column and pushes
+the "Why Brazil" paragraph down by exactly 294px at 375px (measured). Two fixes were
+weighed and both rejected:
+
+- **Reserving the 12-chip height** with a `min-height` removes the movement but leaves a
+  large empty gap beside the first stop, where only two chips exist — and the list
+  visibly filling up *is* the payoff the interaction exists for.
+- **Keeping all twelve chips in the DOM** and hiding the unreached ones holds the height
+  constant but scatters the visible chips into their final positions with gaps between
+  them, which reads worse than growth.
+
+The movement is user-triggered, so it is excluded from CLS scoring, and the trajectory
+sits near the top of the page — a reader interacting with the rail has these sections
+off-screen. The one case it is felt is a reader who has scrolled down, comes back up and
+clicks a different stop. That is an acceptable cost for the interaction's whole point.
+Do not "fix" this without re-reading the two rejected options.
 
 - [ ] **Step 5: Commit**
 
