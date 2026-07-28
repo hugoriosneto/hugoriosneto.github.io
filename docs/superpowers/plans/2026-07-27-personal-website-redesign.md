@@ -394,6 +394,12 @@ Expected: `5 passed`.
   --acc2: #012169;
   --mark: rgba(254, 221, 0, 0.85); /* highlighter fill only */
 
+  /* Award badge. These were literals in index.astro, the only text colours in the
+     codebase outside this file — which meant the AA suite structurally could not see
+     them. Named here so the classification test pulls them in automatically. */
+  --award-fg: #7a5f00;
+  --award-line: #d9bb45;
+
   /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
      declares those same two names, so `--font-sans: var(--font-sans)` would be a
      self-reference that only resolves by cascade accident (unlayered beats
@@ -455,10 +461,12 @@ function composite(rgba: string, bgHex: string): string {
 }
 
 const TEXT_TOKENS = ['ink', 'dim', 'faint', 'acc', 'acc2'] as const;
+/* --award-fg sits on the yellow badge fill, not on --bg or --card, so it is classified
+   as text but checked against its own surface in a dedicated case below. */
 const CLASSIFIED = {
   surface: ['bg', 'card', 'hair', 'hair2', 'cardline'],
-  text: [...TEXT_TOKENS],
-  fill: ['accfill', 'mark'],
+  text: [...TEXT_TOKENS, 'award-fg'],
+  fill: ['accfill', 'mark', 'award-line'],
   nonColour: ['font-display', 'font-body'],
 };
 
@@ -488,6 +496,13 @@ describe('design tokens', () => {
     expect(contrastRatio('#ffffff', token('accfill'))).toBeLessThan(4.5);
   });
 
+  it('keeps the award badge legible on its own fill', () => {
+    // The badge fill composites flag yellow at 30% over cream. Checked explicitly
+    // because --award-fg sits on neither --bg nor --card.
+    const badgeFill = composite('rgba(254, 221, 0, 0.3)', token('bg'));
+    expect(contrastRatio(token('award-fg'), badgeFill)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('keeps white legible on the two fills that do carry text', () => {
     // --acc is the fill for the CV print button; --acc2 for anything darker.
     expect(contrastRatio('#ffffff', token('acc'))).toBeGreaterThanOrEqual(4.5);
@@ -510,7 +525,7 @@ describe('design tokens', () => {
 - [ ] **Step 7: Run it to verify it passes**
 
 Run: `npx vitest run tests/unit/tokens.test.ts`
-Expected: `15 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the highlighter composite, and the exhaustive classification check.
+Expected: `16 passed` — five text tokens against `--bg`, the same five against `--card`, tier separation, the `--accfill` graphic-only guard, white-on-fills, the award badge on its own fill, the highlighter composite, and the exhaustive classification check.
 
 The last four exist because the first draft of this suite tested only one axis — text token against surface token — and that blind spot let a real WCAG 1.4.3 failure into Task 17, where a `text-white` button sat on `--accfill` at 3.83:1.
 
@@ -1681,15 +1696,15 @@ const links = [
    the Props interface when a prop is literally named `as`, and emits a spurious
    "'Props' is declared but never used" hint on every run. Reproduced and isolated —
    any other name clears it. */
-interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string; tag?: 'h2' | 'h3' | 'span' }
-const { kicker, sub, moreHref, moreLabel, tag = 'h2' } = Astro.props;
+interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string; moreTestid?: string; tag?: 'h2' | 'h3' | 'span' }
+const { kicker, sub, moreHref, moreLabel, moreTestid, tag = 'h2' } = Astro.props;
 const Kicker = tag;
 ---
 <div class="mb-6 flex flex-wrap items-baseline gap-3">
   <Kicker class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</Kicker>
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
-    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}>
+    <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref} data-testid={moreTestid}>
       {moreLabel ?? 'More'} <span aria-hidden="true">→</span>
     </a>
   )}
@@ -2387,11 +2402,47 @@ test('the research teaser carries the thesis and MLSA rows, not just papers', as
   await expect(body).toContainText('13th edition');
 });
 
+test('the research and talks lists share one left edge', async ({ page }) => {
+  await page.goto('/');
+  // They previously started 56px apart with identical typography, which read as two
+  // people having built them. The talks language gutter is what closes it.
+  const [research, talks] = await Promise.all([
+    page.getByTestId('research-title').first().evaluate((e) => e.getBoundingClientRect().x),
+    page.getByTestId('talks-title').first().evaluate((e) => e.getBoundingClientRect().x),
+  ]);
+  expect(Math.abs(research - talks), `research titles at ${research}, talks at ${talks}`).toBeLessThan(2);
+});
+
+test('no section seam draws two parallel hairlines', async ({ page }) => {
+  await page.goto('/');
+  // border-b on every li meant each list's last row drew a full-width rule 48px above
+  // the next section's border-t. divide-y fixes it; this catches a regression.
+  const ys = await page.evaluate(() =>
+    [...document.querySelectorAll('main *')]
+      .filter((el) => {
+        const cs = getComputedStyle(el);
+        return parseFloat(cs.borderTopWidth) > 0 || parseFloat(cs.borderBottomWidth) > 0;
+      })
+      .flatMap((el) => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        const out: number[] = [];
+        if (parseFloat(cs.borderTopWidth) > 0) out.push(Math.round(r.top));
+        if (parseFloat(cs.borderBottomWidth) > 0) out.push(Math.round(r.bottom));
+        return out;
+      })
+      .sort((a, b) => a - b));
+  const tooClose = ys.filter((y, i) => i > 0 && y - ys[i - 1] > 0 && y - ys[i - 1] < 8);
+  expect(tooClose, `hairlines within 8px of each other at y=${tooClose.join(', ')}`).toEqual([]);
+});
+
 test('teasers link to the full pages', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: /All research/ })).toHaveAttribute('href', '/research');
   await expect(page.getByRole('link', { name: /All talks/ })).toHaveAttribute('href', '/talks');
-  await expect(page.getByRole('link', { name: /SALab & FAME/ }).last()).toHaveAttribute('href', '/salab-fame');
+  // Scoped to the section: unscoped with .last() this fell through to the nav's own
+  // /salab-fame link and passed even with the teaser link deleted. Mutation-tested.
+  await expect(page.getByTestId('built-more')).toHaveAttribute('href', '/salab-fame');
 });
 ```
 
@@ -2415,7 +2466,9 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
 // the two credentials a director reader is most likely to weigh.
 const extraResearch = [
   { year: 2026, title: 'MSc, Computer Science — thesis defended', venue: 'UFMG · February 2026', tag: 'Thesis' },
-  { year: 2026, title: 'Co-organizer, Machine Learning & Data Mining for Sports Analytics', venue: 'ECML/PKDD · Naples · 13th edition', tag: 'Workshop' },
+  // "Service", not "Workshop": next to a paper list, "Workshop" reads as "he has a
+  // workshop paper", understating the organizing role and overstating the publication.
+  { year: 2026, title: 'Co-organizer, Machine Learning & Data Mining for Sports Analytics', venue: 'ECML/PKDD · Naples · 13th edition', tag: 'Service' },
 ];
 const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.data.order).slice(0, 3);
 const fame = await getCollection('fame');
@@ -2425,8 +2478,11 @@ const fame = await getCollection('fame');
   <Trajectory />
 
   <section class="border-t border-[var(--hair)] py-12">
-    <SectionHead kicker="Built from nothing" sub="and still running" moreHref="/salab-fame" moreLabel="SALab & FAME" />
-    <div data-testid="built" class="grid gap-4 sm:grid-cols-2">
+    <SectionHead kicker="Built from nothing" sub="and still running" moreHref="/salab-fame" moreLabel="SALab & FAME" moreTestid="built-more" />
+    <!-- md, not sm: at 768px — one of the three widths the spec mandates checking —
+         FAME's meta line wraps and grid-stretch leaves the SALab card with 40px of dead
+         space. gap-6 matches the card padding; gap-4 read as one block split by a seam. -->
+    <div data-testid="built" class="grid gap-6 md:grid-cols-2">
       <article class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
         <h3 class="text-lg font-semibold tracking-tight">Sports Analytics Lab (SALab)</h3>
         <p class="mb-3 text-xs text-[var(--faint)]">UFMG · co-founded 2022</p>
@@ -2439,7 +2495,8 @@ const fame = await getCollection('fame');
         <h3 class="text-lg font-semibold tracking-tight">FAME</h3>
         <p class="mb-3 text-xs text-[var(--faint)]">Football Analytics: Modeling &amp; Experience · 2022–2026</p>
         <p class="text-sm leading-relaxed text-[var(--dim)]">
-          The first football analytics conference in Brazil, across {fame.length} editions —
+          The first football analytics conference in Brazil, now in its
+          {['first','second','third','fourth','fifth','sixth'][fame.length - 1] ?? `${fame.length}th`} edition —
           the 2024 edition ran alongside NYU's Institute for Global Sport.
         </p>
       </article>
@@ -2448,24 +2505,34 @@ const fame = await getCollection('fame');
 
   <section class="border-t border-[var(--hair)] py-12">
     <SectionHead kicker="Research" sub="peer-reviewed and conference work" moreHref="/research" moreLabel="All research" />
-    <ul class="m-0 list-none border-t border-[var(--hair)] p-0">
+    <!-- divide-y, not border-b on each li: with border-b the last row drew a full-width
+         rule 48px above the next section's border-t, giving two parallel hairlines with
+         nothing between them at two of the four seams.
+         The two appended rows carry no year. Descending 2024/2023/2022 and then jumping
+         to 2026/2026 read as a sorting bug rather than "and also these credentials"; the
+         tag says what they are and the venue line already carries the date. The gutter
+         stays for alignment. -->
+    <ul class="m-0 list-none divide-y divide-[var(--hair)] border-t border-[var(--hair)] p-0">
       {papers.map((p) => (
-        <li class="flex items-baseline gap-4 border-b border-[var(--hair)] py-3">
+        <li class="flex items-baseline gap-4 py-3">
           <span class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{p.data.year}</span>
           <span>
-            <span class="text-[0.9rem] font-medium leading-snug">{p.data.title}</span>
+            <span data-testid="research-title" class="text-[0.9rem] font-medium leading-snug">{p.data.title}</span>
             <span class="block text-xs text-[var(--faint)]">{p.data.venue}</span>
           </span>
         </li>
       ))}
       {extraResearch.map((r) => (
-        <li class="flex items-baseline gap-4 border-b border-[var(--hair)] py-3">
-          <span class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{r.year}</span>
+        <li class="flex items-baseline gap-4 py-3">
+          <span class="w-10 shrink-0" aria-hidden="true"></span>
           <span>
             <span class="text-[0.9rem] font-medium leading-snug">{r.title}</span>
+            <!-- Inline, not ml-auto: pushed right, the badge floated 250–547px from the
+                 title it labels at 1280px, and at 375px it narrowed the whole text block
+                 for its full height, orphaning a word. -->
+            <span class="ml-2 whitespace-nowrap rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">{r.tag}</span>
             <span class="block text-xs text-[var(--faint)]">{r.venue}</span>
           </span>
-          <span class="ml-auto shrink-0 rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">{r.tag}</span>
         </li>
       ))}
     </ul>
@@ -2473,18 +2540,24 @@ const fame = await getCollection('fame');
 
   <section class="border-t border-[var(--hair)] py-12">
     <SectionHead kicker="Talks & media" sub="in English and Portuguese" moreHref="/talks" moreLabel="All talks" />
-    <ul class="m-0 list-none border-t border-[var(--hair)] p-0">
+    <!-- The language gutter is what aligns these titles with the research list above —
+         without it the two adjacent lists started 56px apart with identical typography,
+         which read as two people having built them. It also differentiates the lists,
+         which answer different questions, and fills the void the award badge floated in.
+         `language` and `format` were already in the schema and rendered nowhere. -->
+    <ul class="m-0 list-none divide-y divide-[var(--hair)] border-t border-[var(--hair)] p-0">
       {talks.map((t) => (
-        <li class="flex items-baseline gap-4 border-b border-[var(--hair)] py-3">
+        <li class="flex items-baseline gap-4 py-3">
+          <span class="w-10 shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--faint)]">{t.data.language}</span>
           <span>
-            <span class="text-[0.9rem] font-medium leading-snug">{t.data.title}</span>
-            <span class="block text-xs text-[var(--faint)]">{t.data.description}</span>
+            <span data-testid="talks-title" class="text-[0.9rem] font-medium leading-snug">{t.data.title}</span>
+            {t.data.award && (
+              <span class="ml-2 whitespace-nowrap rounded-full border border-[var(--award-line)] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--award-fg)]">
+                {t.data.award}
+              </span>
+            )}
+            <span class="block text-xs text-[var(--faint)]">{t.data.format} · {t.data.description}</span>
           </span>
-          {t.data.award && (
-            <span class="ml-auto shrink-0 rounded-full border border-[#d9bb45] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[#7a5f00]">
-              {t.data.award}
-            </span>
-          )}
         </li>
       ))}
     </ul>
@@ -2505,7 +2578,7 @@ const fame = await getCollection('fame');
 - [ ] **Step 4: Run the tests**
 
 Run: `npx playwright test tests/e2e/home.spec.ts --project=desktop`
-Expected: `10 passed`.
+Expected: `12 passed`.
 
 **On the 294px reflow, considered and declined.** With four sections now below the
 trajectory, clicking from the first stop to the last grows the chip column and pushes
