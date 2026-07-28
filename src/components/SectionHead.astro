@@ -1,9 +1,19 @@
 ---
-interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string }
-const { kicker, sub, moreHref, moreLabel } = Astro.props;
+/* The kicker renders as a real <h2>, not a <span>. This component is used ten times
+   across Tasks 11–16; as a span, a screen-reader user pressing H on the finished
+   homepage would get exactly one stop for the whole page. `tag` exists for the rare
+   case where a section genuinely is not a heading.
+
+   The prop is `tag`, not `as`: @astrojs/check 0.9.10 fails to link Astro.props back to
+   the Props interface when a prop is literally named `as`, and emits a spurious
+   "'Props' is declared but never used" hint on every run. Reproduced and isolated —
+   any other name clears it. */
+interface Props { kicker: string; sub?: string; moreHref?: string; moreLabel?: string; tag?: 'h2' | 'h3' | 'span' }
+const { kicker, sub, moreHref, moreLabel, tag = 'h2' } = Astro.props;
+const Kicker = tag;
 ---
 <div class="mb-6 flex flex-wrap items-baseline gap-3">
-  <span class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</span>
+  <Kicker class="text-[0.62rem] font-bold uppercase tracking-[0.13em] text-[var(--acc)]">{kicker}</Kicker>
   {sub && <span class="text-sm text-[var(--faint)]">{sub}</span>}
   {moreHref && (
     <a class="ml-auto text-sm text-[var(--acc)] no-underline hover:underline" href={moreHref}>

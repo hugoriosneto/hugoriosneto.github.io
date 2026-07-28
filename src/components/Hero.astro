@@ -7,10 +7,14 @@ const legendLinks = {
 const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:border-[var(--acc)]';
 ---
 <section data-testid="hero" class="py-16">
+  <!-- text-balance on each sentence: without it max-w-[23ch] produces the identical
+       wrap at every width from 414px to 1440px, leaving a one-word orphan on all three
+       lines — one of them the four-character "lab." Balanced, each sentence breaks as
+       "Brazil's first club / analytics department." at every width. -->
   <h1 class="mb-6 max-w-[23ch] font-serif text-[clamp(1.9rem,5vw,2.35rem)] font-normal leading-[1.24] tracking-[-0.022em]">
-    <span class="block">Brazil's <span class="highlight">first</span> club analytics department.</span>
-    <span class="block">Its <span class="highlight">first</span> sports analytics lab.</span>
-    <span class="block">Its <span class="highlight">first</span> football analytics conference.</span>
+    <span class="block text-balance">Brazil's <span class="highlight">first</span> club analytics department.</span>
+    <span class="block text-balance">Its <span class="highlight">first</span> sports analytics lab.</span>
+    <span class="block text-balance">Its <span class="highlight">first</span> football analytics conference.</span>
   </h1>
 
   <p class="mb-8 max-w-[56ch] text-[1.02rem] leading-[1.66] text-[var(--dim)]">
@@ -21,13 +25,22 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
 
   <div class="max-w-[56ch] border-t-2 border-[var(--ink)] pt-4">
     <div class="mb-1 text-lg font-semibold tracking-tight">Hugo Rios-Neto</div>
+    <!-- Separators use --faint, not --hair2: the latter is 1.39:1 on cream, effectively
+         invisible, and these are the only marks dividing the three role clauses.
+         aria-label on each link because a screen-reader user listing links otherwise
+         hears three bare acronyms with no role and no expansion — the visible
+         "Co-founder," is not part of the accessible name.
+         Non-breaking hyphen in Co&#8209;organizer: it was breaking after the hyphen. -->
     <p data-testid="legend" class="text-sm leading-[1.7] text-[var(--dim)]">
       Data Recruitment Lead, RSC Anderlecht
-      <span class="mx-2 text-[var(--hair2)]">·</span>
-      Co-founder, <a class={a} href={legendLinks.salab} target="_blank" rel="noopener">SALab</a>
-      &amp; <a class={a} href={legendLinks.fame} target="_blank" rel="noopener">FAME</a>
-      <span class="mx-2 text-[var(--hair2)]">·</span>
-      Co-organizer, <a class={a} href={legendLinks.mlsa} target="_blank" rel="noopener">MLSA @ ECML/PKDD</a>
+      <span class="mx-2 text-[var(--faint)]" aria-hidden="true">·</span>
+      Co-founder, <a class={a} href={legendLinks.salab} target="_blank" rel="noopener"
+         aria-label="SALab — Sports Analytics Lab at UFMG">SALab</a>
+      &amp; <a class={a} href={legendLinks.fame} target="_blank" rel="noopener"
+         aria-label="FAME — Football Analytics: Modeling and Experience">FAME</a>
+      <span class="mx-2 text-[var(--faint)]" aria-hidden="true">·</span>
+      Co&#8209;organizer, <a class={a} href={legendLinks.mlsa} target="_blank" rel="noopener"
+         aria-label="MLSA — Machine Learning and Data Mining for Sports Analytics, at ECML/PKDD">MLSA @ ECML/PKDD</a>
     </p>
   </div>
 </section>

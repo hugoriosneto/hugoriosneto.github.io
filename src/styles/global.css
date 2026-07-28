@@ -41,9 +41,23 @@ html {
 
 /* Hero only. The 60% stop is coupled to font size: at display size it reads as a
    highlighter, at body size the band falls below the baseline and reads as a thick
-   underline. Do not reuse this at body size. */
+   underline. Do not reuse this at body size.
+
+   The emphasis rides entirely on a background gradient, and two standard rendering
+   modes strip backgrounds: Chrome's print default (Background graphics unchecked)
+   and Windows High Contrast. Without these two lines the three "first" marks vanish
+   silently, leaving three plain sentences and no trace of the site's central device.
+   Verified against a rasterised PDF and forcedColors: active. */
 .highlight {
   background: linear-gradient(transparent 60%, var(--mark) 60%);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+@media (forced-colors: active) {
+  .highlight {
+    forced-color-adjust: none;
+    border-bottom: 0.32em solid Highlight;
+  }
 }
 
 /* Shown only on paper. The CV's name and contact details live in the nav and footer,
