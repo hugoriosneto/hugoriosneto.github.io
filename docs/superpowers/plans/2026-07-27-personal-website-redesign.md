@@ -400,6 +400,9 @@ Expected: `5 passed`.
   --award-fg: #7a5f00;
   --award-line: #d9bb45;
 
+  /* Talk poster surface. A literal here too would sit outside the tested set. */
+  --poster: #ece0b8;
+
   /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
      declares those same two names, so `--font-sans: var(--font-sans)` would be a
      self-reference that only resolves by cascade accident (unlayered beats
@@ -466,7 +469,7 @@ const TEXT_TOKENS = ['ink', 'dim', 'faint', 'acc', 'acc2'] as const;
 const CLASSIFIED = {
   surface: ['bg', 'card', 'hair', 'hair2', 'cardline'],
   text: [...TEXT_TOKENS, 'award-fg'],
-  fill: ['accfill', 'mark', 'award-line'],
+  fill: ['accfill', 'mark', 'award-line', 'poster'],
   nonColour: ['font-display', 'font-body'],
 };
 
@@ -952,12 +955,17 @@ export const paperSchema = z.object({
 });
 
 const EMBED_HOSTS = { youtube: 'www.youtube.com', vimeo: 'player.vimeo.com', spotify: 'open.spotify.com' };
+/* The canonical watch page, which is a different host from the player for Vimeo. Without
+   it the talks page has no <a> anywhere: with scripts off it renders six posters that
+   never load and no way to reach any of the media it exists to surface. */
+const WATCH_HOSTS = { youtube: 'www.youtube.com', vimeo: 'vimeo.com', spotify: 'open.spotify.com' };
 
 export const talkSchema = z.object({
   title: z.string(),
   description: z.string(),
   provider: z.enum(['youtube', 'vimeo', 'spotify']),
   embedUrl: z.string().url().startsWith('https://'),
+  url: z.string().url().startsWith('https://'),
   language: z.enum(['EN', 'PT']),
   format: z.enum(['Conference', 'Podcast', 'Webinar', 'Live']),
   award: z.string().optional(),
@@ -968,6 +976,9 @@ export const talkSchema = z.object({
 }).refine((t) => EMBED_HOSTS[t.provider] === new URL(t.embedUrl).host, {
   message: 'embedUrl host must match provider — this value goes straight into iframe.src.',
   path: ['embedUrl'],
+}).refine((t) => WATCH_HOSTS[t.provider] === new URL(t.url).host, {
+  message: 'url must be the canonical watch page on the provider’s own host.',
+  path: ['url'],
 });
 
 export const fameSchema = z.object({
@@ -1180,6 +1191,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Stats Perform, March 2023, with Maaike Van Roy, Wagner Meira Jr. and Jesse Davis.
   provider: vimeo
   embedUrl: https://player.vimeo.com/video/819432708?h=1ac4fd9fb4&title=0&byline=0&portrait=0
+  url: https://vimeo.com/819432708
   language: EN
   format: Conference
   award: Winner
@@ -1190,6 +1202,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Podcast I host with Caio Batatinha, for Footure, on the current and future state of football analytics.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/videoseries?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
+  url: https://www.youtube.com/playlist?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
   language: PT
   format: Podcast
   credit: Host
@@ -1200,6 +1213,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Co-host of the February 2024 episode, with Jesse Davis as the guest.
   provider: spotify
   embedUrl: https://open.spotify.com/embed/episode/5XGkEVHPcN7hxFQZiwrZeE?si=404dbca0dadd4b65
+  url: https://open.spotify.com/episode/5XGkEVHPcN7hxFQZiwrZeE
   language: EN
   format: Podcast
   credit: Co-host
@@ -1210,6 +1224,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: FC Barcelona, June 2021 — opening a webinar series promoting the 2021 Sports Tomorrow Congress.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/JC38450JDlc
+  url: https://www.youtube.com/watch?v=JC38450JDlc
   language: EN
   format: Webinar
   order: 4
@@ -1219,6 +1234,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: Invited to a Footstats YouTube live, March 2022.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/BtLmS6IDsHk
+  url: https://www.youtube.com/watch?v=BtLmS6IDsHk
   language: PT
   format: Live
   order: 5
@@ -1228,6 +1244,7 @@ Every fact here comes from spec §7 and §8. Nothing is invented.
   description: FC Barcelona, November 2020 — presenting the off-ball scoring opportunity work.
   provider: youtube
   embedUrl: https://www.youtube.com/embed/MyqzmCHs_iw
+  url: https://www.youtube.com/watch?v=MyqzmCHs_iw
   language: EN
   format: Conference
   order: 6
@@ -2977,7 +2994,10 @@ test('shows sponsors where there are any and omits the row where there are none'
   await page.getByRole('tab', { name: /2022/ }).click();
   // Visibility, not count: every edition's panel is in the DOM now, so '24's sponsors
   // line still exists — it is just inside a hidden panel.
-  await expect(page.getByTestId('fame-panel').getByTestId('fame-sponsors')).toBeHidden();
+  // Scoped to one panel: all five are in the DOM now and three carry sponsors, so an
+  // unscoped query resolves to three elements and fails strict mode outright.
+  await expect(page.locator('#fame-panel-2').getByTestId('fame-sponsors')).toBeVisible();
+  await expect(page.locator('#fame-panel-0').getByTestId('fame-sponsors')).toHaveCount(0);
 });
 
 test('renders the upcoming edition without a programme', async ({ page }) => {
@@ -3245,9 +3265,23 @@ test('loads no iframes until a card is clicked', async ({ page }) => {
 
 test('clicking a card loads exactly that one embed', async ({ page }) => {
   await page.goto('/talks');
-  await page.getByRole('button', { name: /Load .*Opta Pro Forum/ }).click();
+  await page.getByRole('link', { name: /Watch Opta Pro Forum/ }).click();
   await expect(page.locator('iframe')).toHaveCount(1);
   await expect(page.locator('iframe')).toHaveAttribute('src', /player\.vimeo\.com/);
+});
+
+test('every talk is reachable without JavaScript', async ({ browser }) => {
+  // The page exists to surface the media. With scripts off the earlier version rendered
+  // six posters that never loaded and no link anywhere — and embedUrl is a player URL,
+  // so a reader could not even recover it by hand.
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const p = await ctx.newPage();
+  await p.goto('/talks');
+  const hrefs = await p.locator('.talk-frame').evaluateAll((as) =>
+    as.map((a) => (a as HTMLAnchorElement).href));
+  expect(hrefs).toHaveLength(6);
+  for (const h of hrefs) expect(h).toMatch(/^https:\/\/(www\.youtube\.com|vimeo\.com|open\.spotify\.com)\//);
+  await ctx.close();
 });
 
 test('makes no third-party requests before a click', async ({ page }) => {
@@ -3281,19 +3315,22 @@ const { talk } = Astro.props;
 const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]';
 ---
 <article data-testid="talk-card" class="overflow-hidden rounded-xl border border-[var(--cardline)] bg-[var(--card)]">
-  <div class="talk-frame aspect-video bg-[#ece0b8]" data-embed={talk.embedUrl}>
-    <button type="button"
-            class="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 border-0 bg-transparent"
-            aria-label={`Load ${talk.provider} embed for ${talk.title}`}>
-      <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
-      <span class="text-xs text-[var(--dim)]">click to load {talk.provider}</span>
-    </button>
-  </div>
+  <!-- An <a> to the canonical watch page, not a <button>. With scripts off the earlier
+       version rendered six posters that never loaded and left no link to any of the media
+       the page exists to surface — and the embedUrl is a player URL, so it was not
+       recoverable by hand either. The script calls preventDefault() and swaps in the
+       iframe; without it, the poster is simply a link that opens the talk. -->
+  <a class="talk-frame flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 bg-[var(--poster)] no-underline"
+     href={talk.url} data-embed={talk.embedUrl} target="_blank" rel="noopener"
+     aria-label={`Watch ${talk.title} on ${talk.provider}`}>
+    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
+    <span class="text-xs text-[var(--dim)]">play here, or open on {talk.provider}</span>
+  </a>
   <div class="p-4">
     <h3 class="text-[0.9rem] font-semibold leading-snug">{talk.title}</h3>
     <p class="mt-1 text-xs leading-relaxed text-[var(--faint)]">{talk.description}</p>
     <div class="mt-2.5 flex flex-wrap gap-1.5">
-      {talk.award && <span class="rounded-full border border-[#d9bb45] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[#7a5f00]">{talk.award}</span>}
+      {talk.award && <span class="rounded-full border border-[var(--award-line)] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--award-fg)]">{talk.award}</span>}
       <span class={tag}>{talk.language}</span>
       <span class={tag}>{talk.format}</span>
       {talk.credit && <span class={tag}>{talk.credit}</span>}
@@ -3327,11 +3364,14 @@ const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.dat
 
 <script is:inline>
   document.querySelectorAll('.talk-frame').forEach((frame) => {
-    const button = frame.querySelector('button');
-    if (!button) return;
-    button.addEventListener('click', () => {
+    frame.addEventListener('click', (ev) => {
       const src = frame.getAttribute('data-embed');
       if (!src) return;
+      /* Only now do we take over the navigation. Without the script the same element is
+         an ordinary link to the provider. Modified clicks fall through so "open in new
+         tab" still works. */
+      if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button !== 0) return;
+      ev.preventDefault();
       const iframe = document.createElement('iframe');
       iframe.src = src;
       iframe.width = '100%';
@@ -3352,7 +3392,7 @@ const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.dat
 - [ ] **Step 5: Run the test**
 
 Run: `npx playwright test tests/e2e/talks.spec.ts --project=desktop`
-Expected: `5 passed`.
+Expected: `6 passed`.
 
 - [ ] **Step 6: Commit**
 
