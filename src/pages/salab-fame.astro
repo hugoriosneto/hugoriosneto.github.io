@@ -1,0 +1,26 @@
+---
+import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
+import FameSwitcher from '../components/FameSwitcher.astro';
+---
+<Base title="SALab & FAME — Hugo Rios-Neto" description="Brazil's first sports analytics lab and its first football analytics conference, both built at UFMG." current="salab-fame">
+  <h1 class="pt-12 font-serif text-3xl font-normal tracking-tight">SALab &amp; FAME</h1>
+  <p class="mb-10 mt-1 max-w-[56ch] text-sm leading-relaxed text-[var(--dim)]">
+    A research lab and a conference, both built from nothing at UFMG, both still running.
+  </p>
+
+  <section class="border-t border-[var(--hair)] py-10">
+    <SectionHead kicker="Sports Analytics Lab" sub="founded 2022" />
+    <p class="max-w-[58ch] leading-relaxed text-[var(--dim)]">
+      Brazil's first sports analytics lab, co-founded in 2022 and supervised by Wagner Meira Jr.
+      and Adriano César Pereira of UFMG's Computer Science Department. Research, teaching, and a
+      route into the industry for students who previously had none.
+    </p>
+  </section>
+
+  <section class="border-t border-[var(--hair)] py-10">
+    <SectionHead kicker="FAME" sub="Football Analytics: Modeling & Experience" />
+    <FameSwitcher />
+  </section>
+
+</Base>

@@ -1,0 +1,100 @@
+---
+import { getCollection } from 'astro:content';
+
+const editions = (await getCollection('fame')).sort((a, b) => a.data.edition - b.data.edition);
+const data = editions.map((e) => e.data);
+const ordinal = (n: number) => ['1st', '2nd', '3rd', '4th', '5th'][n - 1] ?? `${n}th`;
+
+/* The most recent edition that has actually happened — not the last tab. Opening on the
+   upcoming one shows a title, a date and 26 characters of "Programme to be announced",
+   the emptiest panel on the site, where spec §6 wants the growth argument. Self-corrects
+   once '26 flips to past. */
+const defaultIndex = Math.max(0, data.map((e) => e.status).lastIndexOf('past'));
+
+const C = {
+  head: 'text-lg font-semibold tracking-tight',
+  meta: 'mb-2.5 text-xs text-[var(--faint)]',
+  body: 'max-w-[58ch] leading-relaxed text-[var(--dim)]',
+  note: 'max-w-[58ch] leading-relaxed text-[var(--faint)]',
+  sponsors: 'mt-3 text-xs text-[var(--faint)]',
+  badge: 'ml-2 rounded-full border border-[var(--acc2)] px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]',
+};
+const d = data[defaultIndex];
+---
+<div>
+  <div role="tablist" aria-label="FAME editions" class="mb-5 flex flex-wrap gap-1.5">
+    {data.map((e, i) => (
+      <button type="button" role="tab" id={`fame-tab-${i}`}
+              aria-controls="fame-panel"
+              aria-selected={i === defaultIndex ? 'true' : 'false'}
+              tabindex={i === defaultIndex ? 0 : -1}
+              data-index={i}
+              class="fame-tab rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1.5 text-sm tabular-nums text-[var(--dim)] hover:border-[var(--acc)]"
+              style={i === defaultIndex ? 'background:var(--acc);border-color:var(--acc);color:#fff' : ''}>
+        {e.year}
+      </button>
+    ))}
+  </div>
+  <div id="fame-panel" role="tabpanel" data-testid="fame-panel"
+       aria-labelledby={`fame-tab-${defaultIndex}`} class="min-h-[8rem]">
+    <div class={C.head}>FAME '{String(d.year).slice(2)} — {ordinal(d.edition)} edition</div>
+    <div class={C.meta}>{d.date} · {d.venue}</div>
+    {d.detail ? <p class={C.body}>{d.detail}</p> : <p class={C.note}>{d.note}</p>}
+    {d.sponsors.length > 0 && (
+      <p data-testid="fame-sponsors" class={C.sponsors}>Sponsored by {d.sponsors.join(' and ')}</p>
+    )}
+  </div>
+</div>
+
+<script is:inline define:vars={{ data, C, defaultIndex, ordinals: data.map((e) => ordinal(e.edition)) }}>
+  (() => {
+    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const tabs = Array.from(document.querySelectorAll('.fame-tab'));
+    const panel = document.getElementById('fame-panel');
+    if (!tabs.length || !panel) return;
+
+    function select(i) {
+      tabs.forEach((t, j) => {
+        const on = i === j;
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+        t.tabIndex = on ? 0 : -1;
+        /* --acc, not --accfill: white on #009739 is 3.83:1 and fails AA at this 14px
+           label size. White on #0a7d33 is 5.26:1. Task 19's axe gate reads computed
+           styles after this runs, so it would catch it. */
+        t.style.background = on ? 'var(--acc)' : 'var(--card)';
+        t.style.borderColor = on ? 'var(--acc)' : 'var(--cardline)';
+        t.style.color = on ? '#fff' : 'var(--dim)';
+      });
+      panel.setAttribute('aria-labelledby', `fame-tab-${i}`);
+
+      const e = data[i];
+      const badge = e.status === 'upcoming'
+        ? `<span class="${C.badge}">Upcoming</span>` : '';
+      const body = e.detail
+        ? `<p class="${C.body}">${esc(e.detail)}</p>`
+        : `<p class="${C.note}">${esc(e.note || '')}</p>`;
+      const sponsors = e.sponsors && e.sponsors.length
+        ? `<p data-testid="fame-sponsors" class="${C.sponsors}">Sponsored by ${e.sponsors.map(esc).join(' and ')}</p>`
+        : '';
+
+      panel.innerHTML =
+        `<div class="${C.head}">FAME '${esc(String(e.year).slice(2))} — ${ordinals[i]} edition${badge}</div>` +
+        `<div class="${C.meta}">${esc(e.date)} · ${esc(e.venue)}</div>` + body + sponsors;
+    }
+
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => select(i));
+      t.addEventListener('keydown', (ev) => {
+        const keys = { ArrowRight: Math.min(i + 1, tabs.length - 1), ArrowLeft: Math.max(i - 1, 0),
+                       Home: 0, End: tabs.length - 1 };
+        if (!(ev.key in keys)) return;
+        ev.preventDefault();
+        tabs[keys[ev.key]].focus();
+        select(keys[ev.key]);
+      });
+    });
+
+    select(defaultIndex);
+  })();
+</script>
