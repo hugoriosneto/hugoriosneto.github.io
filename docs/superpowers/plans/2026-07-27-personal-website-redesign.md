@@ -2637,9 +2637,10 @@ test('lists all four papers newest first', async ({ page }) => {
 test('a paper row expands to show authors and links', async ({ page }) => {
   await page.goto('/research');
   const row = page.getByTestId('paper-gabr');
-  await expect(row.getByText('Ricardo Furbino')).toBeHidden();
+  // .first(): the escaped BibTeX <pre> in the same row also contains "Ricardo Furbino".
+  await expect(row.getByText('Ricardo Furbino').first()).toBeHidden();
   await row.locator('summary').first().click();
-  await expect(row.getByText('Ricardo Furbino')).toBeVisible();
+  await expect(row.getByText('Ricardo Furbino').first()).toBeVisible();
   await expect(row.getByRole('link', { name: /^PDF/ })).toHaveAttribute('href', '/assets/pdf/gabr.pdf');
 });
 
@@ -2653,21 +2654,36 @@ test('the BibTeX entry is readable and copyable without JavaScript', async ({ br
   await row.locator('summary').first().click();
   await row.locator('[data-bibtex-row] summary').click();
   await expect(row.locator('[data-bibtex-row] pre')).toContainText('@inproceedings{furbino2022generalized');
-  await expect(row.locator('[data-bibtex-row] pre')).toContainText('{Wagner Meira Jr.}');
+  // gabr's authors are Ricardo Furbino M. Nascimento and Hugo Rios-Neto — Wagner Meira
+  // Jr. is on eniac23 and obso, not this paper.
+  await expect(row.locator('[data-bibtex-row] pre')).toContainText('{Ricardo Furbino M. Nascimento}');
   // No copy button exists without JS — the script creates it, so nothing dead renders.
   await expect(row.getByRole('button', { name: 'Copy' })).toHaveCount(0);
   await ctx.close();
 });
 
-test('copying twice does not strand the button label', async ({ page, context }) => {
-  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+test('copying twice does not strand the button label', async ({ page }) => {
+  // grantPermissions(['clipboard-write']) is Chromium-only — WebKit rejects the
+  // permission name outright. This test is about the label's state machine, not real
+  // OS clipboard access, so stub it: portable and deterministic on both projects.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: () => Promise.resolve() }, configurable: true,
+    });
+  });
   await page.goto('/research');
   const row = page.getByTestId('paper-gabr');
   await row.locator('summary').first().click();
   await row.locator('[data-bibtex-row] summary').click();
   const btn = row.getByRole('button', { name: /Copy/ });
-  await btn.click();
-  await btn.click();
+
+  // Both clicks dispatched in-page, 50ms apart. Two Playwright .click() calls land
+  // ~1.8-2s apart, which is longer than the 1500ms auto-revert — so the second click
+  // always started after the first timer had already restored the label, and the test
+  // passed whether or not the bug was present. It has to land inside the window.
+  await btn.evaluate((b: HTMLButtonElement) =>
+    new Promise<void>((done) => { b.click(); setTimeout(() => { b.click(); done(); }, 50); }));
+
   // Capturing the label inside the handler meant the second click saved "Copied" as the
   // text to restore, leaving the button permanently mislabelled.
   await expect(btn).toHaveText('Copy', { timeout: 4000 });
@@ -2768,9 +2784,13 @@ const previews = import.meta.glob<{ default: ImageMetadata }>('/src/assets/paper
 const preview = previews[`/src/assets/papers/${id}.png`]?.default;
 ---
 <div data-testid={`paper-${id}`} class="border-b border-[var(--hair)]">
-  <details>
-    <!-- `group` on the summary, not the details: on the details, hovering a pill in the
-         expanded body turned the title green. -->
+  <!-- Two groups, deliberately. The unnamed `group` on <summary> scopes the title's
+       hover tint, which on <details> also fired from pills in the expanded body. But
+       `group-open:` needs the SAME element to carry both the class and `[open]`, and
+       only <details> is ever `[open]` — so the chevron rotate hangs off a NAMED group
+       on <details>. Collapsing these back into one `group` silently stops the "+"
+       rotating, with no test to catch it. -->
+  <details class="group/row">
     <summary class="group flex cursor-pointer list-none items-baseline gap-4 py-3.5">
       <span data-testid="paper-year" class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{paper.year}</span>
       {preview && (
@@ -2782,7 +2802,7 @@ const preview = previews[`/src/assets/papers/${id}.png`]?.default;
         <span class="text-[0.9rem] font-medium leading-snug group-hover:text-[var(--acc)]">{paper.title}</span>
         <span class="block text-xs text-[var(--faint)]">{paper.venue}</span>
       </span>
-      <span class="ml-auto shrink-0 text-[var(--faint)] transition-transform group-open:rotate-45" aria-hidden="true">+</span>
+      <span class="ml-auto shrink-0 text-[var(--faint)] transition-transform group-open/row:rotate-45" aria-hidden="true">+</span>
     </summary>
     <div class="pb-5 pl-14">
       <p class="mb-2 text-sm leading-relaxed text-[var(--dim)]">
