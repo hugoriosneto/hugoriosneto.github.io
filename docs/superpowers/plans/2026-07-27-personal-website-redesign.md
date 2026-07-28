@@ -3781,7 +3781,11 @@ export const prerender = true;
       <div class="flex h-[6px] w-40">
         <i class="flex-[2] bg-[var(--accfill)]"></i><i class="flex-1 bg-[#FEDD00]"></i><i class="flex-[1.4] bg-[var(--acc2)]"></i>
       </div>
-      <div class="font-serif text-[68px] leading-[1.15] tracking-[-0.02em] text-[var(--ink)]">
+      <!-- 46px, not 68px: at 68px each claim wrapped to two lines, the block ran to five
+           lines and ~620px, and justify-between squeezed the tricolour rule off the top
+           of the 630px card entirely. At 46px each claim fits one line with room to
+           spare, and 46px still reads at roughly 23px in a half-size feed thumbnail. -->
+      <div class="font-serif text-[46px] leading-[1.25] tracking-[-0.02em] text-[var(--ink)]">
         <span class="block">Brazil's <span class="highlight">first</span> club analytics department.</span>
         <span class="block">Its <span class="highlight">first</span> sports analytics lab.</span>
         <span class="block">Its <span class="highlight">first</span> football analytics conference.</span>
@@ -3839,8 +3843,11 @@ const REDIRECTS: [string, string][] = [
 for (const [from, to] of REDIRECTS) {
   test(`${from} redirects to ${to}`, async ({ page }) => {
     await page.goto(from);
+    // waitForURL is the real gate — it throws on timeout if the redirect does not land.
+    // An earlier `expect(page.url()).toContain(to === '/' ? '' : to)` reduced to
+    // `toContain('')` for the eight targets that are '/', which can never fail.
     await page.waitForURL((url) => url.pathname.replace(/\/$/, '') === to.replace(/\/$/, '') || url.pathname === to);
-    expect(page.url()).toContain(to === '/' ? '' : to);
+    expect(new URL(page.url()).pathname.replace(/\/$/, '') || '/').toBe(to.replace(/\/$/, '') || '/');
   });
 }
 
@@ -3854,6 +3861,9 @@ test('sitemap is generated and excludes the OG card', async ({ request }) => {
   const res = await request.get('/sitemap-index.xml');
   expect(res.status()).toBe(200);
   const idx = await request.get('/sitemap-0.xml');
+  // Status first: a 404 body also fails to contain '/og/', so the content check alone
+  // passes whether or not the sitemap exists.
+  expect(idx.status()).toBe(200);
   expect(await idx.text()).not.toContain('/og/');
 });
 
@@ -3863,8 +3873,10 @@ test('the OG card is a designed image, not a page screenshot', async ({ request,
   expect(res.headers()['content-type']).toContain('image');
   // The card page renders the claims at display size so they survive a thumbnail.
   await page.goto('/og/');
+  // > 40, not > 48: the claims are 46px. The threshold still separates display type from
+  // the card's own 34px name and 22px role line, so it means something.
   const size = await page.locator('.font-serif').first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
-  expect(size).toBeGreaterThan(48);
+  expect(size).toBeGreaterThan(40);
 });
 
 test('every internal link on every page resolves', async ({ page, request }) => {
@@ -3903,7 +3915,8 @@ Expected: `14 passed` — 9 redirects, the 404, the sitemap, the OG card, the in
 - [ ] **Step 6: Commit**
 
 ```bash
-git add public/favicon.svg public/img/og.png src/pages/404.astro tests/e2e/routing.spec.ts
+git add public/favicon.svg public/img/og.png src/pages/404.astro src/pages/og.astro \
+  astro.config.mjs tests/e2e/routing.spec.ts
 git commit -m "feat: add favicon, 404, OG image and redirect coverage"
 ```
 
