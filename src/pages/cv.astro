@@ -1,0 +1,86 @@
+---
+import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
+import { getCollection } from 'astro:content';
+import { thesis, mlsa } from '../lib/facts';
+
+const roles = (await getCollection('roles'))
+  .sort((a, b) => b.data.order - a.data.order)
+  .filter((r) => r.id !== 'salab-fame');
+
+const founded = [
+  { when: '2022 – now', role: 'Co-founder', org: 'Sports Analytics Lab (SALab), UFMG', note: "Brazil's first sports analytics lab." },
+  { when: '2022 – now', role: 'Co-founder & organizer', org: 'FAME', note: "Brazil's first football analytics conference. Five editions." },
+];
+const education = [
+  { when: 'defended 02/2026', role: thesis.degree, org: thesis.institution,
+    note: `${thesis.title}. Supervisor: ${thesis.supervisor}. Co-supervisors: ${thesis.coSupervisors.join(' and ')}.` },
+  { when: '03/2018 – 08/2022', role: 'BSc, Computational Mathematics', org: 'UFMG', note: '' },
+];
+const service = [
+  { when: `${mlsa.priorYear}, 2026`, role: 'Co-organizer', org: `MLSA @ ${mlsa.venue}`,
+    note: `${mlsa.priorEdition}th and ${mlsa.edition}th editions.` },
+  { when: '2023', role: 'Winner, Algorithm Track', org: 'Opta Pro Forum', note: 'With Maaike Van Roy, Wagner Meira Jr. and Jesse Davis.' },
+];
+---
+<Base title="CV — Hugo Rios-Neto" description="Curriculum vitae — football analytics, from Belo Horizonte to Brussels." current="cv">
+  <div data-testid="cv" class="py-12">
+    <!-- The name and contact details live in the nav and footer, both .no-print.
+         Without this block ⌘P produces an anonymous CV — which would defeat the
+         entire point of having a print stylesheet instead of a separate PDF. -->
+    <div class="print-only mb-6 border-b-2 border-[var(--ink)] pb-4">
+      <div class="text-2xl font-semibold tracking-tight">Hugo Rios-Neto</div>
+      <div class="mt-1 text-sm">Data Recruitment Lead, RSC Anderlecht</div>
+      <div class="mt-1 text-sm">
+        <a href="https://www.linkedin.com/in/hugoriosneto">LinkedIn</a>
+        <span class="mx-2">·</span>
+        <a href="https://scholar.google.com/citations?user=jtR1qv4AAAAJ">Google Scholar</a>
+      </div>
+    </div>
+
+    <div class="mb-8 flex flex-wrap items-start gap-4">
+      <div>
+        <h1 class="font-serif text-3xl font-normal tracking-tight">Curriculum Vitae</h1>
+        <p class="mt-1 text-sm text-[var(--dim)]">Belo Horizonte → Brussels.</p>
+      </div>
+      <button type="button" id="cv-print"
+              class="no-print ml-auto rounded-full bg-[var(--acc)] px-4 py-2 text-sm font-semibold text-white">
+        Print / save as PDF
+      </button>
+    </div>
+
+    <SectionHead kicker="Experience" />
+    <div data-testid="cv-experience">
+    {roles.map((r) => (
+      <div class="avoid-break grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
+        <div class="text-sm tabular-nums text-[var(--faint)]">{r.data.dates}</div>
+        <div>
+          <div class="font-semibold">{r.data.title}</div>
+          <div class="text-sm font-medium text-[var(--acc)]">{r.data.org}</div>
+          <p class="mt-1 text-sm text-[var(--dim)]">{r.data.blurb}</p>
+        </div>
+      </div>
+    ))}
+    </div>
+
+    {[['Founded', founded, 'cv-founded'], ['Education', education, 'cv-education'], ['Service & awards', service, 'cv-service']].map(([kicker, rows, tid]: any) => (
+      <div class="mt-10" data-testid={tid}>
+        <SectionHead kicker={kicker} />
+        {rows.map((row: any) => (
+          <div class="avoid-break grid grid-cols-1 gap-x-5 border-t border-[var(--hair)] py-3 sm:grid-cols-[9rem_1fr]">
+            <div class="text-sm tabular-nums text-[var(--faint)]">{row.when}</div>
+            <div>
+              <div class="font-semibold">{row.role}</div>
+              <div class="text-sm font-medium text-[var(--acc)]">{row.org}</div>
+              {row.note && <p class="mt-1 text-sm text-[var(--dim)]">{row.note}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+</Base>
+
+<script is:inline>
+  document.getElementById('cv-print')?.addEventListener('click', () => window.print());
+</script>

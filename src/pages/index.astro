@@ -4,15 +4,14 @@ import Hero from '../components/Hero.astro';
 import Trajectory from '../components/Trajectory.astro';
 import SectionHead from '../components/SectionHead.astro';
 import { getCollection } from 'astro:content';
+import { thesis, mlsa } from '../lib/facts';
 
 const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.data.year).slice(0, 3);
 // Spec section 7 item 6 asks for three papers plus the thesis and the MLSA row —
 // the two credentials a director reader is most likely to weigh.
 const extraResearch = [
-  { year: 2026, title: 'MSc, Computer Science — thesis defended', venue: 'UFMG · February 2026', tag: 'Thesis' },
-  // "Service", not "Workshop": next to a paper list, "Workshop" reads as "he has a
-  // workshop paper", understating the organizing role and overstating the publication.
-  { year: 2026, title: 'Co-organizer, Machine Learning & Data Mining for Sports Analytics', venue: 'ECML/PKDD · Naples · 13th edition', tag: 'Service' },
+  { title: `${thesis.degree} — thesis defended`, venue: `${thesis.institution} · ${thesis.defended}`, tag: 'Thesis' },
+  { title: `Co-organizer, ${mlsa.name}`, venue: `${mlsa.venue} · ${mlsa.city} · ${mlsa.edition}th edition`, tag: 'Service' },
 ];
 const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.data.order).slice(0, 3);
 const fame = await getCollection('fame');

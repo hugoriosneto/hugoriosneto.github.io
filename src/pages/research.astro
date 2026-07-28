@@ -3,6 +3,7 @@ import Base from '../layouts/Base.astro';
 import SectionHead from '../components/SectionHead.astro';
 import PaperRow from '../components/PaperRow.astro';
 import { getCollection } from 'astro:content';
+import { thesis, mlsa } from '../lib/facts';
 
 const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.data.year);
 ---
@@ -20,10 +21,10 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
   <section class="pt-10">
     <SectionHead kicker="Thesis" />
     <div data-testid="thesis" class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
-      <p class="font-serif text-lg leading-snug">Towards Learning Representations from Spatiotemporal Grids in Soccer</p>
-      <p class="mt-1 text-sm text-[var(--acc)]">MSc, Computer Science — UFMG · defended February 2026</p>
+      <p class="font-serif text-lg leading-snug">{thesis.title}</p>
+      <p class="mt-1 text-sm text-[var(--acc)]">{thesis.degree} — {thesis.institution} · defended {thesis.defended}</p>
       <p class="mt-2 text-sm text-[var(--dim)]">
-        Supervisor: Wagner Meira Jr. Co-supervisors: Jesse Davis and Adriano C. M. Pereira.
+        Supervisor: {thesis.supervisor}. Co-supervisors: {thesis.coSupervisors.join(' and ')}.
       </p>
     </div>
   </section>
@@ -31,11 +32,11 @@ const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.da
   <section class="pt-10">
     <SectionHead kicker="Service" />
     <div data-testid="service" class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
-      <p class="font-medium">Co-organizer — Machine Learning &amp; Data Mining for Sports Analytics</p>
-      <p class="mt-1 text-sm text-[var(--acc)]">13th edition · ECML/PKDD · Naples · 7 September 2026</p>
+      <p class="font-medium">Co-organizer — {mlsa.name}</p>
+      <p class="mt-1 text-sm text-[var(--acc)]">{mlsa.edition}th edition · {mlsa.venue} · {mlsa.city} · {mlsa.date}</p>
       <p class="mt-2 text-sm text-[var(--dim)]">
-        With Pieter Robberechts, Maaike Van Roy and Albrecht Zimmermann. Second year as an
-        organizer, following the 12th edition in 2025.
+        With {mlsa.organisers.slice(0, -1).join(', ')} and {mlsa.organisers.at(-1)}. Second year as an
+        organizer, following the {mlsa.priorEdition}th edition in {mlsa.priorYear}.
       </p>
     </div>
   </section>
