@@ -70,6 +70,26 @@ html {
   .highlight {
     border-bottom: 0.32em solid Highlight;
   }
+
+  /* The trajectory rail is drawn entirely in backgrounds, and forced-colors strips both
+     kinds: the track's background-color becomes Canvas and #traj-progress's inline
+     linear-gradient becomes `none`. Measured in Chromium under forcedColors: active, the
+     track went rgb(221,208,164) -> rgb(255,255,255) and the progress bar's
+     background-image went linear-gradient(...) -> none, with border-top-width 0px on
+     both — so the whole rail vanished, leaving five hollow circles floating between the
+     labels "2021" and "now" with nothing joining them. Both the timeline and the
+     how-far-along encoding were gone.
+     Borders keyed to system colours survive forced-colors with no forced-color-adjust
+     opt-out, which is the same mechanism .highlight above already relies on. The bars are
+     2px tall (h-0.5) and border-box, so a 2px border-top fills each one exactly — the
+     geometry and the width arithmetic in Trajectory.astro are untouched. */
+  #traj-track,
+  #traj-progress {
+    border-top: 2px solid CanvasText;
+  }
+  #traj-progress {
+    border-top-color: Highlight;
+  }
 }
 
 /* Shown only on paper. The CV's name and contact details live in the nav and footer,

@@ -149,3 +149,87 @@ test('the final stop is server-rendered, so it survives with JavaScript off', as
   await expect(p.getByTestId('trajectory-chips').locator('li')).toHaveCount(12);
   await ctx.close();
 });
+
+test('the rail survives forced-colors', async ({ page, browserName }) => {
+  // The rail is drawn entirely in backgrounds, and forced-colors strips both kinds.
+  // Measured before the fix, in Chromium at 1280: the track's background-color went
+  // rgb(221,208,164) -> rgb(255,255,255) (Canvas) and #traj-progress's inline
+  // linear-gradient went -> none, with border-top-width 0px on both. The entire rail
+  // disappeared, leaving five hollow circles between the labels "2021" and "now" with
+  // nothing joining them — both the timeline and the how-far-along encoding gone.
+  await page.goto('/');
+  await page.emulateMedia({ media: 'screen', forcedColors: 'active', colorScheme: 'light' });
+
+  const m = await page.evaluate(() => {
+    // Read the live system colours rather than hard-coding a palette: Chromium and
+    // WebKit resolve Highlight differently and both are legitimate.
+    const probe = document.createElement('span');
+    document.body.appendChild(probe);
+    const sys = (kw: string) => { probe.style.color = kw; return getComputedStyle(probe).color; };
+    const sysHighlight = sys('Highlight');
+    const sysCanvasText = sys('CanvasText');
+    const sysCanvas = sys('Canvas');
+    probe.remove();
+    const read = (id: string) => {
+      const el = document.getElementById(id)!;
+      const s = getComputedStyle(el);
+      return { width: parseFloat(s.borderTopWidth), color: s.borderTopColor };
+    };
+    return { track: read('traj-track'), prog: read('traj-progress'),
+             sysHighlight, sysCanvasText, sysCanvas };
+  });
+
+  // A border keyed to a system colour is the one paint that survives forced-colors with
+  // no forced-color-adjust opt-out — the same mechanism .highlight relies on. A literal
+  // hex here would be forced to CanvasText and the progress bar would become
+  // indistinguishable from the track, which is what the colour assertions below catch.
+  expect.soft(m.track.width, 'the rail track has no forced-colors fallback').toBeGreaterThan(0);
+  expect.soft(m.prog.width, 'the progress bar has no forced-colors fallback').toBeGreaterThan(0);
+  expect.soft(m.track.color, 'the track is painted in Canvas — invisible').not.toBe(m.sysCanvas);
+  expect.soft(m.prog.color, 'the progress bar is painted in Canvas — invisible').not.toBe(m.sysCanvas);
+  expect.soft(m.prog.color, 'the progress bar is not the system Highlight').toBe(m.sysHighlight);
+  expect.soft(m.track.color, 'the track is not the system CanvasText').toBe(m.sysCanvasText);
+  // The "how far along" encoding only exists if the two bars differ from each other.
+  expect.soft(m.prog.color, 'progress and track are the same colour — no progress is readable')
+    .not.toBe(m.track.color);
+
+  // WebKit's forced-colors emulation flips the media query but forces no palette — its
+  // track keeps rgb(221,208,164) and its progress bar keeps the gradient — so the pixel
+  // half below has nothing to measure there and would pass for the wrong reason.
+  if (browserName !== 'chromium') return;
+
+  // The assertion that actually bites: the rail must be INK on the page, not merely
+  // carry the right computed values. Sample the rail's own centre row.
+  const rail = page.getByTestId('trajectory-rail');
+  await rail.scrollIntoViewIfNeeded();
+  const box = await page.evaluate(() => {
+    const t = document.getElementById('traj-track')!.getBoundingClientRect();
+    return { x: t.x, y: t.y, w: t.width, h: t.height, dpr: window.devicePixelRatio };
+  });
+  const shot = await page.screenshot({
+    clip: { x: box.x, y: box.y - 4, width: box.w, height: box.h + 8 },
+  });
+  const ink = await page.evaluate(async ({ b64, dpr, h }) => {
+    const img = new Image();
+    img.src = 'data:image/png;base64,' + b64;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = img.width; c.height = img.height;
+    const g = c.getContext('2d', { willReadFrequently: true })!;
+    g.drawImage(img, 0, 0);
+    const row = Math.round((4 + h / 2) * dpr);
+    let painted = 0;
+    for (let x = 0; x < c.width; x++) {
+      const d = g.getImageData(x, row, 1, 1).data;
+      if (!(d[0] > 245 && d[1] > 245 && d[2] > 245)) painted++;
+    }
+    return { painted, total: c.width };
+  }, { b64: shot.toString('base64'), dpr: box.dpr, h: box.h });
+
+  // The five stop dots sit on top of the rail and punch Canvas-coloured holes in it —
+  // measured 5 runs totalling ~80 of 832 columns — so the floor is 85%, not 100%.
+  // Before the fix this row was 0% painted end to end.
+  expect(ink.painted / ink.total,
+    `only ${ink.painted}/${ink.total} columns of the rail are painted in forced-colors`)
+    .toBeGreaterThan(0.85);
+});

@@ -30,7 +30,10 @@ const C = {
   </div>
 
   <div class="relative mb-1 h-10" data-testid="trajectory-rail">
-    <div class="absolute left-2 right-2 top-[19px] h-0.5 bg-[var(--hair2)]"></div>
+    <!-- id, not data-testid: global.css repaints both bars in forced-colors, where their
+         backgrounds are stripped, and a selector CSS depends on must not be a test hook.
+         Same reasoning as the script's getElementById calls below. -->
+    <div id="traj-track" class="absolute left-2 right-2 top-[19px] h-0.5 bg-[var(--hair2)]"></div>
     <div id="traj-progress" class="absolute left-2 top-[19px] h-0.5 transition-[width] duration-500"
          style={`background:linear-gradient(90deg,var(--accfill),#FEDD00);width:calc(${data[last].position}% - 8px)`}></div>
     {data.map((r, i) => (
@@ -47,8 +50,15 @@ const C = {
     <span>2021</span><span>now</span>
   </div>
 
-  <!-- min-[56rem]:, matching Hero.astro, so the page has ONE tablet boundary instead of
-       two. At md: (768px) the 1fr chip column resolved to 320px against ~326px of chips,
+  <!-- min-[56rem]:, matching Hero.astro. An earlier version of this comment claimed that
+       made "the page" reflow at ONE tablet boundary instead of two; that is false and was
+       never measured. index.astro's "Built from nothing" grid is still md:grid-cols-2, so
+       768px remains a real reflow for the page as a whole — the two cards go one column
+       -> 348px + 348px there, that section drops 327px -> 197px, and the document loses
+       exactly those 130px (3802 -> 3672 at width 767 -> 768). The hero and this section
+       are what move together at 896; whether the cards should join them is an open
+       design question, not a settled one.
+       At md: (768px) the 1fr chip column resolved to 320px against ~326px of chips,
        which tipped the 12 capability chips out of 3-per-row into a 12-row single-file
        stack and grew this section by ~250px — in the same band where the hero was
        already splitting too early. Both columns here depend on the container being at

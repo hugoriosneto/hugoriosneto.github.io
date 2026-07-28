@@ -386,19 +386,23 @@ test('the hero text column stays full width across the tablet band', async ({ pa
       };
     });
     expect(m.col, `hero text column is only ${m.col}px at ${width}px`).toBeGreaterThanOrEqual(440);
-    // max-w-[56ch] on the lead is 565.3px. Below ~613 the column is the binding
-    // constraint; through this band the cap must be what binds, not the column — that
-    // is the difference between a readable measure and a 332px one.
+    // max-w-[56ch] on the lead resolves to 576.55px, NOT the 565.25px the portrait and
+    // the identity rule get: ch is relative to the element's own font-size and the lead
+    // is text-[1.02rem]. Below ~613 the column is the binding constraint; through this
+    // band the cap must be what binds, not the column — that is the difference between a
+    // readable measure and a 332px one.
     expect(m.lead, `the lead measures only ${m.lead}px at ${width}px`).toBeGreaterThanOrEqual(500);
   }
 });
 
 test('the portrait shares both edges with the identity rule below the split', async ({ page }) => {
   // The whole justification for max-w-[56ch] on the portrait: 56ch is the cap already on
-  // the lead and the identity block, so the photo's left and right edges land on exactly
-  // the same two verticals as the rule above it. Pinned at 280px it aligned to nothing —
-  // the rule ran to 327px at 375, 366px at 414 and 565.3px at 767 — and the photo read
-  // as a thumbnail that had failed to load.
+  // the IDENTITY BLOCK — both inherit 16px, so both resolve to 565.25px and the photo's
+  // left and right edges land on exactly the same two verticals as the rule above it.
+  // The lead is NOT part of this alignment: it is text-[1.02rem], so its own 56ch is
+  // 576.55px. Pinned at 280px the photo aligned to nothing — the rule ran to 327px at
+  // 375, 366px at 414 and 565.25px at 767 — and it read as a thumbnail that had failed
+  // to load.
   for (const width of [375, 414, 613, 767, ...BAND]) {
     await page.setViewportSize({ width, height: 1024 });
     await page.goto('/');
@@ -495,4 +499,40 @@ test('teasers link to the full pages', async ({ page }) => {
   // Scoped to the section: unscoped with .last() this fell through to the nav's own
   // /salab-fame link and passed even with the teaser link deleted. Mutation-tested.
   await expect(page.getByTestId('built-more')).toHaveAttribute('href', '/salab-fame');
+});
+
+/** Words on the last visual line of the lead paragraph. Same word-walk as worstOrphan:
+ *  Range.getClientRects() over the whole <p> returns one rect per DOM fragment, and the
+ *  lead contains a nested <b>, so rect-counting would not see visual lines at all. */
+const leadLastLineWords = (page: import('@playwright/test').Page) =>
+  page.locator('[data-testid="hero"] p').first().evaluate((p) => {
+    const tops: number[] = [];
+    const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+      const text = node.textContent || '';
+      for (const m of text.matchAll(/\S+/g)) {
+        const r = document.createRange();
+        r.setStart(node, m.index!);
+        r.setEnd(node, m.index! + m[0].length);
+        tops.push(r.getBoundingClientRect().top);
+      }
+    }
+    if (!tops.length) return 99;
+    const lastTop = Math.max(...tops);
+    return tops.filter((t) => Math.abs(t - lastTop) < 2).length;
+  });
+
+test('the lead paragraph does not end on a one-word line', async ({ page }) => {
+  // Measured before text-pretty: the last line was the single word "Anderlecht." with
+  // "RSC" stranded on the line above, at 414 and at every two-column width. 375/613/767/
+  // 768/820/895 ended "RSC Anderlecht." and were already fine, so this is a
+  // width-dependent widow — testing only the project defaults would miss over half of it.
+  // 896 and 1440 are the first and last two-column widths; 414 is the phone that shows it.
+  for (const width of [414, 896, 1024, 1280, 1440]) {
+    await page.setViewportSize({ width, height: 1024 });
+    await page.goto('/');
+    expect(await leadLastLineWords(page),
+      `the lead paragraph strands one word on its last line at ${width}px`).toBeGreaterThan(1);
+  }
 });

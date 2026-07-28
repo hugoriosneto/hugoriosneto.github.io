@@ -18,7 +18,7 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
      PIXEL change of viewport: the text column fell 719px -> 332px, the lead's measure
      fell 576.5px -> 332px, the h1 gained two one-word orphan lines ("department." and
      "conference." each alone), and the hero collapsed 1059.1px -> 840.7px. max-w-[23ch]
-     on the h1 (457.3px) and max-w-[56ch] on the lead (565.3px) were both inert from 768
+     on the h1 (457.4px) and max-w-[56ch] on the lead (576.6px) were both inert from 768
      to 895, because the column was narrower than either cap.
      On a phone the grid collapses and the figure lands after the identity block: the
      h1 is the strongest claim on the site and has to be the first thing on a small
@@ -47,7 +47,15 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
       <span class="block text-balance">Its <span class="highlight">first</span> football analytics conference.</span>
     </h1>
 
-    <p class="mb-8 max-w-[56ch] text-[1.02rem] leading-[1.66] text-[var(--dim)]">
+    <!-- text-pretty, not text-balance: the last line was the single word "Anderlecht."
+         at 414, 896, 1024, 1280 and 1440 — every two-column width plus one phone — with
+         "RSC" stranded on the line above. text-balance would re-even all five lines of a
+         body paragraph; pretty targets exactly the short-last-line case. Measured in
+         Chromium and WebKit on the built page: it restores "RSC Anderlecht." at all five
+         widths and changes the line COUNT at none of 375, 390, 414, 613, 767, 768, 820,
+         895, 896, 1024, 1280, 1440 — so the hero's height is unchanged. The h1 above
+         already spends text-balance on the same class of blemish. -->
+    <p class="mb-8 max-w-[56ch] text-pretty text-[1.02rem] leading-[1.66] text-[var(--dim)]">
       I've spent my career building the parts of a football operation that didn't exist yet —
       <b class="font-semibold text-[var(--ink)]">a department, a research lab, a conference now in its fifth edition</b>
       — and then running them. These days I lead data recruitment at RSC Anderlecht.
@@ -88,12 +96,20 @@ const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:
        The astro:assets import carries the intrinsic 1260x1575, so width/height ship in
        the markup and the box is reserved before the bytes arrive — no layout shift.
 
-       Below 56rem the portrait is w-full capped at max-w-[56ch] — the SAME cap the lead
-       paragraph and the identity block already carry, so the photo's left and right
-       edges land on exactly the same two verticals as the rule above it at every width
-       below the breakpoint. It was previously pinned to 280px while that rule ran to
-       327px (at 375), 366px (at 414) and 565px (at 767), so its right edge aligned to
-       nothing and it read as a thumbnail that had failed to load. 56ch measures 565.3px.
+       Below 56rem the portrait is w-full capped at max-w-[56ch], which is the cap the
+       IDENTITY BLOCK carries — both inherit 16px, so both resolve to 565.25px and the
+       photo's left and right edges land on exactly the same two verticals as the rule
+       above it at every width below the breakpoint (measured 0.00px / 0.00px at 375,
+       414, 613, 767, 768, 820 and 895). It was previously pinned to 280px while that
+       rule ran to 327px (at 375), 366px (at 414) and 565px (at 767), so its right edge
+       aligned to nothing and it read as a thumbnail that had failed to load.
+       The LEAD is deliberately not part of that alignment, and an earlier version of
+       this comment was wrong to claim it was: `ch` resolves against the element's own
+       font-size, and the lead is text-[1.02rem] (16.32px), so its 56ch measures 576.55px
+       — 11.3px wider than the rule and the photo. It does not show today, because the
+       longest lead line at 767 still ends 13.25px inside the rule's right edge, but the
+       margin is only 13px: a copy edit that lengthens a lead line can push it past the
+       photo's edge, and nothing here will stop it.
 
        The sizes list tracks those CSS boundaries exactly, or the tablet band downloads
        the wrong candidate: 340px from 896 up; 565px from 613 (where the 56ch cap starts
