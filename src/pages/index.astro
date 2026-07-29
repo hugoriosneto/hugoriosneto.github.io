@@ -1,0 +1,127 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/Hero.astro';
+import Trajectory from '../components/Trajectory.astro';
+import SectionHead from '../components/SectionHead.astro';
+import { getCollection } from 'astro:content';
+import { thesis, mlsa } from '../lib/facts';
+
+const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.data.year).slice(0, 3);
+// Spec section 7 item 6 asks for three papers plus the thesis and the MLSA row —
+// the two credentials a director reader is most likely to weigh.
+const extraResearch = [
+  { title: `${thesis.degree} — thesis defended`, venue: `${thesis.institution} · ${thesis.defended}`, tag: 'Thesis' },
+  { title: `Co-organizer, ${mlsa.name}`, venue: `${mlsa.venue} · ${mlsa.city} · ${mlsa.edition}th edition`, tag: 'Service' },
+];
+const talks = (await getCollection('talks')).sort((a, b) => a.data.order - b.data.order).slice(0, 3);
+const fame = await getCollection('fame');
+---
+<Base title="Hugo Rios-Neto" description="Data Recruitment Lead at RSC Anderlecht. Built Brazil's first club analytics department, its first sports analytics lab and its first conference." current="home">
+  <Hero />
+  <Trajectory />
+
+  <section class="border-t border-[var(--hair)] py-12">
+    <SectionHead kicker="Built from nothing" sub="and still running" moreHref="/salab-fame" moreLabel="SALab & FAME" moreTestid="built-more" />
+    <!-- items-start, so each card sizes to its own content. Grid's default `stretch`
+         forces equal heights, which guarantees dead space inside the shorter card
+         whenever the two bodies differ by a line — and they do, at whichever width the
+         longer one happens to wrap. Chasing that by tuning copy fixes one breakpoint and
+         leaves the next copy edit to reintroduce it. Uneven bottoms on two bordered
+         cards read as normal; 24px of empty space inside one of them does not.
+         md, not sm: sm:grid-cols-2 put two columns at 640px where they are too narrow.
+         gap-6 matches the card padding; gap-4 read as one block split by a seam. -->
+    <div data-testid="built" class="grid items-start gap-6 md:grid-cols-2">
+      <article class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
+        <h3 class="text-lg font-semibold tracking-tight">Sports Analytics Lab (SALab)</h3>
+        <p class="mb-3 text-xs text-[var(--faint)]">UFMG · co-founded 2022</p>
+        <p class="text-sm leading-relaxed text-[var(--dim)]">
+          Brazil's first sports analytics lab. Research, teaching, and a route into the industry
+          for students who previously had none.
+        </p>
+      </article>
+      <article class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
+        <h3 class="text-lg font-semibold tracking-tight">FAME</h3>
+        <!-- No date range: at 768px — a spec-mandated check width, and exactly where
+             md: turns two columns on — the longer string wrapped and grid-stretch left
+             the SALab card with 40px of dead space. The body copy below already carries
+             the edition count, and the SALab & FAME page carries every date. -->
+        <p class="mb-3 text-xs text-[var(--faint)]">Football Analytics: Modeling &amp; Experience</p>
+        <p class="text-sm leading-relaxed text-[var(--dim)]">
+          The first football analytics conference in Brazil, now in its
+          {['first','second','third','fourth','fifth','sixth'][fame.length - 1] ?? `${fame.length}th`} edition —
+          the 2024 edition ran alongside NYU's Institute for Global Sport.
+        </p>
+      </article>
+    </div>
+  </section>
+
+  <section class="border-t border-[var(--hair)] py-12">
+    <SectionHead kicker="Research" sub="peer-reviewed and conference work" moreHref="/research" moreLabel="All research" />
+    <!-- divide-y, not border-b on each li: with border-b the last row drew a full-width
+         rule 48px above the next section's border-t, giving two parallel hairlines with
+         nothing between them at two of the four seams.
+         The two appended rows carry no year. Descending 2024/2023/2022 and then jumping
+         to 2026/2026 read as a sorting bug rather than "and also these credentials"; the
+         tag says what they are and the venue line already carries the date. The gutter
+         stays for alignment. -->
+    <ul class="m-0 list-none divide-y divide-[var(--hair)] border-t border-[var(--hair)] p-0">
+      {papers.map((p) => (
+        <li class="flex items-baseline gap-4 py-3">
+          <span class="w-10 shrink-0 text-sm tabular-nums text-[var(--faint)]">{p.data.year}</span>
+          <span>
+            <span data-testid="research-title" class="text-[0.9rem] font-medium leading-snug">{p.data.title}</span>
+            <span class="block text-xs text-[var(--faint)]">{p.data.venue}</span>
+          </span>
+        </li>
+      ))}
+      {extraResearch.map((r) => (
+        <li class="flex items-baseline gap-4 py-3">
+          <span class="w-10 shrink-0" aria-hidden="true"></span>
+          <span>
+            <span class="text-[0.9rem] font-medium leading-snug">{r.title}</span>
+            <!-- Inline, not ml-auto: pushed right, the badge floated 250–547px from the
+                 title it labels at 1280px, and at 375px it narrowed the whole text block
+                 for its full height, orphaning a word. -->
+            <span class="ml-2 whitespace-nowrap rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]">{r.tag}</span>
+            <span class="block text-xs text-[var(--faint)]">{r.venue}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="border-t border-[var(--hair)] py-12">
+    <SectionHead kicker="Talks & media" sub="in English and Portuguese" moreHref="/talks" moreLabel="All talks" />
+    <!-- The language gutter is what aligns these titles with the research list above —
+         without it the two adjacent lists started 56px apart with identical typography,
+         which read as two people having built them. It also differentiates the lists,
+         which answer different questions, and fills the void the award badge floated in.
+         `language` and `format` were already in the schema and rendered nowhere. -->
+    <ul class="m-0 list-none divide-y divide-[var(--hair)] border-t border-[var(--hair)] p-0">
+      {talks.map((t) => (
+        <li class="flex items-baseline gap-4 py-3">
+          <span class="w-10 shrink-0 text-xs font-semibold uppercase tracking-wider text-[var(--faint)]">{t.data.language}</span>
+          <span>
+            <span data-testid="talks-title" class="text-[0.9rem] font-medium leading-snug">{t.data.title}</span>
+            {t.data.award && (
+              <span class="ml-2 whitespace-nowrap rounded-full border border-[var(--award-line)] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--award-fg)]">
+                {t.data.award}
+              </span>
+            )}
+            <span class="block text-xs text-[var(--faint)]">{t.data.format} · {t.data.description}</span>
+          </span>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="border-t border-[var(--hair)] py-12">
+    <div class="mb-5 h-[3px] w-12" style="background:linear-gradient(90deg,var(--accfill) 55%,#FEDD00 55%)"></div>
+    <p data-testid="why-brazil" class="max-w-[60ch] font-serif text-[1.28rem] leading-[1.62]">
+      No country has won more World Cups than Brazil, or produced more great footballers.
+      None of it was matched by any analytics infrastructure — no club department, no research
+      lab, no conference. <em class="italic text-[var(--acc)]">Closing that gap is what my career has been</em>,
+      and everything on this page came out of it.
+    </p>
+  </section>
+</Base>

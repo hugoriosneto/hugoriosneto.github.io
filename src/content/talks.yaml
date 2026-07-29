@@ -1,0 +1,51 @@
+- id: opta-2023
+  title: Opta Pro Forum — Algorithm Track
+  description: Stats Perform, March 2023, with Maaike Van Roy, Wagner Meira Jr. and Jesse Davis.
+  provider: vimeo
+  embedUrl: https://player.vimeo.com/video/819432708?h=1ac4fd9fb4&title=0&byline=0&portrait=0
+  url: https://vimeo.com/819432708
+  language: EN
+  format: Conference
+  award: Winner
+  order: 1
+
+- id: data-footure
+  title: Data Footure
+  description: Podcast I host with Caio Batatinha, for Footure, on the current and future state of football analytics.
+  provider: youtube
+  embedUrl: https://www.youtube.com/embed/videoseries?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
+  url: https://www.youtube.com/playlist?list=PL5Xa3vHksUiyGtMnSo2H05YlpG5vdp5SC
+  language: PT
+  format: Podcast
+  credit: Host
+  order: 2
+
+- id: barca-innovation-hub
+  title: Barça Innovation Hub webinar
+  description: FC Barcelona, June 2021 — opening a webinar series promoting the 2021 Sports Tomorrow Congress.
+  provider: youtube
+  embedUrl: https://www.youtube.com/embed/JC38450JDlc
+  url: https://www.youtube.com/watch?v=JC38450JDlc
+  language: EN
+  format: Webinar
+  order: 3
+
+- id: footstats
+  title: Footstats live
+  description: Invited to a Footstats YouTube live, March 2022.
+  provider: youtube
+  embedUrl: https://www.youtube.com/embed/BtLmS6IDsHk
+  url: https://www.youtube.com/watch?v=BtLmS6IDsHk
+  language: PT
+  format: Live
+  order: 4
+
+- id: sports-tomorrow-2020
+  title: Analytics in Sports Tomorrow Congress
+  description: FC Barcelona, November 2020 — presenting the off-ball scoring opportunity work.
+  provider: youtube
+  embedUrl: https://www.youtube.com/embed/MyqzmCHs_iw
+  url: https://www.youtube.com/watch?v=MyqzmCHs_iw
+  language: EN
+  format: Conference
+  order: 5

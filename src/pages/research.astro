@@ -1,0 +1,85 @@
+---
+import Base from '../layouts/Base.astro';
+import SectionHead from '../components/SectionHead.astro';
+import PaperRow from '../components/PaperRow.astro';
+import { getCollection } from 'astro:content';
+import { thesis, mlsa } from '../lib/facts';
+
+const papers = (await getCollection('papers')).sort((a, b) => b.data.year - a.data.year);
+---
+<Base title="Research — Hugo Rios-Neto" description="Peer-reviewed and conference work in football and basketball analytics, plus the MLSA workshop." current="research">
+  <h1 class="pt-12 font-serif text-3xl font-normal tracking-tight">Research</h1>
+  <p class="mb-8 mt-1 max-w-[56ch] text-sm leading-relaxed text-[var(--dim)]">
+    Peer-reviewed and conference work in football and basketball analytics, plus the workshop I help organize.
+  </p>
+
+  <div class="border-t border-[var(--hair)]">
+    {papers.map((p) => <PaperRow paper={p.data} id={p.id} />)}
+  </div>
+  <p id="bibtex-status" role="status" aria-live="polite" class="sr-only"></p>
+
+  <section class="pt-10">
+    <SectionHead kicker="Thesis" />
+    <div data-testid="thesis" class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
+      <p class="font-serif text-lg leading-snug">{thesis.title}</p>
+      <p class="mt-1 text-sm text-[var(--acc)]">{thesis.degree} — {thesis.institution} · defended {thesis.defended}</p>
+      <p class="mt-2 text-sm text-[var(--dim)]">
+        Supervisor: {thesis.supervisor}. Co-supervisors: {thesis.coSupervisors.join(' and ')}.
+      </p>
+    </div>
+  </section>
+
+  <section class="pt-10">
+    <SectionHead kicker="Service" />
+    <div data-testid="service" class="rounded-xl border border-[var(--cardline)] bg-[var(--card)] p-6">
+      <p class="font-medium">Co-organizer — {mlsa.name}</p>
+      <p class="mt-1 text-sm text-[var(--acc)]">{mlsa.edition}th edition · {mlsa.venue} · {mlsa.city} · {mlsa.date}</p>
+      <p class="mt-2 text-sm text-[var(--dim)]">
+        With {mlsa.organisers.slice(0, -1).join(', ')} and {mlsa.organisers.at(-1)}. Second year as an
+        organizer, following the {mlsa.priorEdition}th edition in {mlsa.priorYear}.
+      </p>
+    </div>
+  </section>
+
+</Base>
+
+<script is:inline>
+  /* Upgrades each BibTeX disclosure with a copy button. The <pre> is already selectable
+     without this, so nothing here is load-bearing — which is why the button is created
+     rather than rendered: no dead control exists when the script does not run. */
+  const status = document.getElementById('bibtex-status');
+  document.querySelectorAll('[data-bibtex-row]').forEach((row) => {
+    const pre = row.querySelector('pre');
+    const summary = row.querySelector('summary');
+    if (!pre || !summary) return;
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = summary.className;
+    btn.textContent = 'Copy';
+    btn.style.marginTop = '0.5rem';
+    pre.after(btn);
+
+    /* Captured once, outside the handler. Captured inside, a second click while the
+       label read "Copied" would restore it to "Copied" — permanently. */
+    const original = btn.textContent;
+    let timer;
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(pre.textContent || '');
+        btn.textContent = 'Copied';
+        /* A bare textContent swap on the focused element is not announced. Screen-reader
+           users otherwise get silence and no way to know whether it worked. */
+        if (status) status.textContent = 'BibTeX copied to clipboard';
+      } catch {
+        /* Rejects on a denied permission, or wherever navigator.clipboard is undefined —
+           over plain HTTP on a LAN preview, for instance. Previously this threw an
+           unhandled rejection and left the button looking simply broken. */
+        btn.textContent = 'Press ⌘C';
+        if (status) status.textContent = 'Copy failed — select the text and copy manually';
+      }
+      clearTimeout(timer);
+      timer = setTimeout(() => { btn.textContent = original; }, 1500);
+    });
+  });
+</script>

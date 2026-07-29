@@ -1,0 +1,116 @@
+/* `source('../')` scopes class detection to src/. Without it Tailwind's automatic
+   scanner walks the whole repo including docs/, where the prose of this very plan
+   contains words like "antialiased" and "block" — and generates dead utilities from
+   them. That makes the shipped CSS depend on the contents of planning documents. */
+@import 'tailwindcss' source('../');
+@import '@fontsource-variable/source-serif-4';
+@import '@fontsource-variable/inter';
+@import './tokens.css';
+
+/* Only the two font families are mapped into @theme, because only the `font-serif`
+   and `font-sans` utilities are ever used. Colour utilities (`bg-bg`, `text-ink`…)
+   appear nowhere in this plan — every consumer writes `text-[var(--acc)]` — so
+   mapping 11 --color-* entries would be dead weight. Note the names differ from
+   the token names on purpose; see the comment in tokens.css. */
+@theme {
+  --font-serif: var(--font-display);
+  --font-sans: var(--font-body);
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  /* The nav is sticky; without this the skip link and any in-page anchor land with
+     their target hidden behind it (WCAG 2.2 SC 2.4.11, which axe does not flag under
+     the wcag21aa tags Task 19 uses). 5rem not 4.5rem: an earlier nav wrapped to two
+     rows at 375px and measured 73px, one pixel over the old value. */
+  scroll-padding-top: 5rem;
+}
+
+/* Deliberately unlayered, so it beats @layer utilities. That also means a future
+   `focus-visible:outline-*` utility would silently lose to it — intended, but
+   surprising, hence this note.
+   No `border-radius` here: it is an element property, not an outline property, so
+   setting it collapses `rounded-full` pills and `rounded-xl` cards into near-squares
+   the moment they receive focus. Outlines already follow the element's own radius. */
+:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 3px;
+}
+
+/* Hero only. The 60% stop is coupled to font size: at display size it reads as a
+   highlighter, at body size the band falls below the baseline and reads as a thick
+   underline. Do not reuse this at body size.
+
+   The emphasis rides entirely on a background gradient, and two standard rendering
+   modes strip backgrounds: Chrome's print default (Background graphics unchecked)
+   and Windows High Contrast. Without the two fallbacks below the three "first" marks
+   vanish silently, leaving three plain sentences and no trace of the site's central
+   device. Verified against a rasterised PDF and forcedColors: active.
+
+   The forced-colors fallback is a system-colour border ONLY. It used to also carry
+   `forced-color-adjust: none`, on the theory that keeping the yellow band was better
+   than losing it. Measured in Chromium under emulateMedia({ forcedColors: 'active',
+   colorScheme: 'dark' }), that opt-out was actively harmful: it held .highlight at the
+   authored rgb(21,26,21) while its h1 was forced to rgb(255,255,255) on a rgb(0,0,0)
+   Canvas — 1.20:1 for the upper 60% of every "first" glyph, the part the gradient
+   does not cover. Three near-invisible words in the site's one headline. Dropping the
+   line lets the word inherit the forced palette (21:1) and Chromium drops the gradient
+   with it, so nothing is left at low contrast. `Highlight` is a system colour and
+   survives forced-colors WITHOUT any opt-out — measured rgba(0,230,255,0.8) dark /
+   rgba(5,0,73,0.8) light in Chromium, rgba(128,188,254,0.6) in WebKit — so the marker
+   still reads as a marker. Do not reintroduce forced-color-adjust here. */
+.highlight {
+  background: linear-gradient(transparent 60%, var(--mark) 60%);
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+@media (forced-colors: active) {
+  .highlight {
+    border-bottom: 0.32em solid Highlight;
+  }
+
+  /* The trajectory rail is drawn entirely in backgrounds, and forced-colors strips both
+     kinds: the track's background-color becomes Canvas and #traj-progress's inline
+     linear-gradient becomes `none`. Measured in Chromium under forcedColors: active, the
+     track went rgb(221,208,164) -> rgb(255,255,255) and the progress bar's
+     background-image went linear-gradient(...) -> none, with border-top-width 0px on
+     both — so the whole rail vanished, leaving five hollow circles floating between the
+     labels "2021" and "now" with nothing joining them. Both the timeline and the
+     how-far-along encoding were gone.
+     Borders keyed to system colours survive forced-colors with no forced-color-adjust
+     opt-out, which is the same mechanism .highlight above already relies on. The bars are
+     2px tall (h-0.5) and border-box, so a 2px border-top fills each one exactly — the
+     geometry and the width arithmetic in Trajectory.astro are untouched. */
+  #traj-track,
+  #traj-progress {
+    border-top: 2px solid CanvasText;
+  }
+  #traj-progress {
+    border-top-color: Highlight;
+  }
+}
+
+/* Shown only on paper. The CV's name and contact details live in the nav and footer,
+   both of which are .no-print, so without this ⌘P produces an anonymous document. */
+.print-only { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block; }
+  html { background: #fff; color: #000; }
+  a { text-decoration: none; color: #000; }
+  a[href^='http']::after { content: ' (' attr(href) ')'; font-size: 0.75em; color: #444; }
+  h1, h2, h3 { break-after: avoid; }
+  .avoid-break { break-inside: avoid; }
+}

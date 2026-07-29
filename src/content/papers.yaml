@@ -1,0 +1,56 @@
+- id: graphepv
+  title: 'GraphEPV: A Framework for Estimating the Expected Possession Value in Basketball Using Graph Neural Networks'
+  year: 2024
+  venue: MLSA @ ECML/PKDD
+  booktitle: Workshop on Machine Learning and Data Mining for Sports Analytics at ECML/PKDD 2024
+  publisher: Springer
+  authors:
+    - Bruno M. Sá-Freire
+    - Gabriel Reis
+    - João L. L. Gonçalves
+    - Jake Schuster
+    - Hugo Rios-Neto
+  bibtexKey: safreire2024graphepv
+  bibtexType: inproceedings
+
+- id: eniac23
+  title: "Characterizing Soccer Strategies based on Moves' Frequency, Importance and Effectiveness"
+  year: 2023
+  venue: ENIAC
+  booktitle: Encontro Nacional de Inteligência Artificial e Computacional
+  authors:
+    - Gabriel Valadão
+    - João L. L. Gonçalves
+    - João L. L. Megale
+    - Vinícius M. Paula
+    - Hugo Rios-Neto
+    - Adriano C. M. Pereira
+    - Wagner Meira Jr.
+  pdf: /assets/pdf/eniac23.pdf
+  bibtexKey: valadao2023characterizing
+  bibtexType: inproceedings
+
+- id: gabr
+  title: Generalized Action-based Ball Recovery Model using 360º data
+  year: 2022
+  venue: StatsBomb Conference
+  booktitle: StatsBomb Conference
+  authors:
+    - Ricardo Furbino M. Nascimento
+    - Hugo Rios-Neto
+  pdf: /assets/pdf/gabr.pdf
+  bibtexKey: furbino2022generalized
+  bibtexType: inproceedings
+
+- id: obso
+  title: 'A new look into Off-ball Scoring Opportunity: taking into account the continuous nature of the game'
+  year: 2020
+  venue: FC Barcelona Analytics in Sports Tomorrow Congress
+  booktitle: FC Barcelona Analytics in Sports Tomorrow Congress
+  authors:
+    - Hugo Rios-Neto
+    - Wagner Meira Jr.
+    - Pedro O. S. Vaz-de-Melo
+  pdf: /assets/pdf/obso.pdf
+  bibtexKey: riosneto2020new
+  bibtexType: inproceedings

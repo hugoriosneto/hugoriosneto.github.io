@@ -1,0 +1,44 @@
+:root {
+  /* Surfaces */
+  --bg: #FBF3D5;
+  --card: #fffdf7;
+  --hair: #eee3bd;
+  --hair2: #ddd0a4;
+  --cardline: #ece1bc;
+
+  /* Photo edges only. --cardline is 1.18:1 on --bg, which is not an edge — a cream
+     subject on a cream wall simply dissolves into the page at its pale corners.
+     --frame measures 2.62:1 on --bg and 2.87:1 on --card: a visible hairline, still
+     well short of a heavy black box. NOT a text colour, and never used as one —
+     tokens.test.ts classifies it as an edge and holds it in a 2.4–3.0:1 band so it
+     cannot drift into either invisibility or a border that outshouts the photograph. */
+  --frame: #ab9560;
+
+  /* Text — every one of these is contrast-tested in tests/unit/tokens.test.ts */
+  --ink: #151a15;
+  --dim: #575849;
+  --faint: #6f6c5c;
+
+  /* Accents */
+  --acc: #0a7d33;      /* text and links only */
+  --accfill: #009739;  /* fills and graphics only — fails AA as text */
+  --acc2: #012169;
+  --mark: rgba(254, 221, 0, 0.85); /* highlighter fill only */
+
+  /* Award badge. These were literals in index.astro, the only text colours in the
+     codebase outside this file — which meant the AA suite structurally could not see
+     them. Named here so the classification test pulls them in automatically. */
+  --award-fg: #7a5f00;
+  --award-line: #d9bb45;
+
+  /* Talk poster surface. A literal here too would sit outside the tested set. */
+  --poster: #ece0b8;
+
+  /* Type — deliberately NOT named --font-serif / --font-sans. Tailwind's @theme
+     declares those same two names, so `--font-sans: var(--font-sans)` would be a
+     self-reference that only resolves by cascade accident (unlayered beats
+     @layer theme). One `@import './tokens.css' layer(...)` would make the property
+     guaranteed-invalid and silently drop the whole site to Times. */
+  --font-display: 'Source Serif 4 Variable', Georgia, serif;
+  --font-body: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+}

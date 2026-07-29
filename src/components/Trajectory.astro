@@ -1,0 +1,160 @@
+---
+import { getCollection } from 'astro:content';
+import SectionHead from './SectionHead.astro';
+
+const roles = (await getCollection('roles')).sort((a, b) => a.data.order - b.data.order);
+const data = roles.map((r) => r.data);
+const last = data.length - 1;
+
+/* Shared by the server-rendered markup below and the script's innerHTML. */
+const C = {
+  verb: 'text-[0.6rem] font-extrabold uppercase tracking-[0.14em] text-[var(--acc2)]',
+  org: 'text-2xl font-semibold tracking-tight',
+  role: 'mb-2 text-sm font-semibold text-[var(--acc)]',
+  blurb: 'max-w-[46ch] leading-relaxed text-[var(--dim)]',
+  chip: 'rounded-full border bg-[var(--card)] px-2.5 py-1 text-xs',
+  fresh: 'border-[var(--acc)] font-semibold text-[var(--acc)]',
+  stale: 'border-[var(--cardline)] text-[var(--dim)]',
+};
+---
+<section class="border-t border-[var(--hair)] py-12">
+  <SectionHead kicker="Trajectory" sub="click through — what each role added stays on screen" />
+
+  <div class="mb-2 flex justify-end">
+    <!-- Discoverability: on touch there is no hover, so without this the interaction is
+         "poke an unlabelled dot and see what changes". Spec §6 calls for it. -->
+    <button type="button" id="traj-play"
+            class="rounded-full border border-[var(--cardline)] bg-[var(--card)] px-3 py-1 text-xs text-[var(--dim)] hover:border-[var(--acc)] hover:text-[var(--acc)]">
+      <span aria-hidden="true">▶</span> Play
+    </button>
+  </div>
+
+  <div class="relative mb-1 h-10" data-testid="trajectory-rail">
+    <!-- id, not data-testid: global.css repaints both bars in forced-colors, where their
+         backgrounds are stripped, and a selector CSS depends on must not be a test hook.
+         Same reasoning as the script's getElementById calls below. -->
+    <div id="traj-track" class="absolute left-2 right-2 top-[19px] h-0.5 bg-[var(--hair2)]"></div>
+    <div id="traj-progress" class="absolute left-2 top-[19px] h-0.5 transition-[width] duration-500"
+         style={`background:linear-gradient(90deg,var(--accfill),#FEDD00);width:calc(${data[last].position}% - 8px)`}></div>
+    {data.map((r, i) => (
+      <button type="button"
+              class={`traj-stop absolute top-2.5 -ml-2.5 h-5 w-5 rounded-full border-2 border-[var(--acc)] transition-transform duration-200 ${i === last ? 'scale-125 bg-[var(--accfill)]' : 'bg-[var(--card)]'}`}
+              style={`left:${r.position}%`}
+              aria-controls="traj-detail"
+              aria-label={`${r.org}, ${r.dates}`}
+              aria-current={i === last ? 'true' : 'false'}></button>
+    ))}
+  </div>
+
+  <div class="mb-7 flex justify-between text-xs text-[var(--faint)]">
+    <span>2021</span><span>now</span>
+  </div>
+
+  <!-- min-[56rem]:, matching Hero.astro. An earlier version of this comment claimed that
+       made "the page" reflow at ONE tablet boundary instead of two; that is false and was
+       never measured. index.astro's "Built from nothing" grid is still md:grid-cols-2, so
+       768px remains a real reflow for the page as a whole — the two cards go one column
+       -> 348px + 348px there, that section drops 327px -> 197px, and the document loses
+       exactly those 130px (3802 -> 3672 at width 767 -> 768). The hero and this section
+       are what move together at 896; whether the cards should join them is an open
+       design question, not a settled one.
+       At md: (768px) the 1fr chip column resolved to 320px against ~326px of chips,
+       which tipped the 12 capability chips out of 3-per-row into a 12-row single-file
+       stack and grew this section by ~250px — in the same band where the hero was
+       already splitting too early. Both columns here depend on the container being at
+       full width, so both move together. -->
+  <div class="grid gap-8 min-[56rem]:grid-cols-[1.15fr_1fr]">
+    <!-- aria-live so arrowing between stops announces the new role rather than changing
+         silently behind a screen-reader user. Not on the chip list — 12 items per change
+         would be unusable. -->
+    <div id="traj-detail" data-testid="trajectory-detail" aria-live="polite">
+      <div class={C.verb}>{data[last].verb}</div>
+      <div class={C.org}>{data[last].org}</div>
+      <div class={C.role}>{data[last].title} · {data[last].dates}</div>
+      <p class={C.blurb}>{data[last].blurb}</p>
+    </div>
+    <div>
+      <h3 id="traj-added" class="mb-3 text-[0.6rem] font-bold uppercase tracking-[0.12em] text-[var(--faint)]">What it added</h3>
+      <!-- role="list" because Tailwind's list-none sets list-style: none, which makes
+           Safari drop list semantics entirely. Same fix applies in Footer.astro. -->
+      <ul id="traj-chips" data-testid="trajectory-chips" role="list" aria-labelledby="traj-added"
+          class="m-0 flex list-none flex-wrap gap-1.5 p-0">
+        {data.flatMap((role, k) => role.capabilities.map((cap) => (
+          <li class={`${C.chip} ${k === last ? C.fresh : C.stale}`}>
+            {cap}{k === last && <span class="sr-only"> (new)</span>}
+          </li>
+        )))}
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script is:inline define:vars={{ data, C, last }}>
+  (() => {
+    /* Content comes from YAML and is interpolated into innerHTML below. Nothing in
+       the data needs markup, so escape it rather than trusting future entries. */
+    const esc = (v) => String(v).replace(/[&<>"']/g, (c) =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const stops = Array.from(document.querySelectorAll('.traj-stop'));
+    /* Queried by id, not data-testid: a test hook must never be load-bearing for
+       production behaviour. */
+    const detail = document.getElementById('traj-detail');
+    const chips = document.getElementById('traj-chips');
+    const progress = document.getElementById('traj-progress');
+    const play = document.getElementById('traj-play');
+    if (!stops.length || !detail || !chips || !progress) return;
+    let timer = null;
+
+    function select(i) {
+      stops.forEach((el, j) => {
+        el.setAttribute('aria-current', j === i ? 'true' : 'false');
+        el.classList.toggle('scale-125', j === i);
+        el.style.background = j === i ? 'var(--accfill)' : 'var(--card)';
+      });
+      progress.style.width = `calc(${data[i].position}% - 8px)`;
+
+      const r = data[i];
+      detail.innerHTML =
+        `<div class="${C.verb}">${esc(r.verb)}</div>` +
+        `<div class="${C.org}">${esc(r.org)}</div>` +
+        `<div class="${C.role}">${esc(r.title)} · ${esc(r.dates)}</div>` +
+        `<p class="${C.blurb}">${esc(r.blurb)}</p>`;
+
+      chips.innerHTML = data.slice(0, i + 1).flatMap((role, k) =>
+        /* `cap`, not `c`: one letter from the outer `C` makes @astrojs/check emit
+           "Could not find name 'C'. Did you mean 'c'?" three times on every run, and
+           npm run check is a CI gate — three standing hints train people to ignore it. */
+        role.capabilities.map((cap) => {
+          /* The visually-hidden "(new)" is not decoration: freshness is otherwise
+             encoded only in border and text colour, which fails 1.4.1 for low-vision
+             sighted users as well as being invisible to AT. */
+          const state = k === i ? C.fresh : C.stale;
+          const flag = k === i ? '<span class="sr-only"> (new)</span>' : '';
+          return `<li class="${C.chip} ${state}">${esc(cap)}${flag}</li>`;
+        })
+      ).join('');
+    }
+
+    function stop() { if (timer) { clearInterval(timer); timer = null; } }
+
+    stops.forEach((el, i) => {
+      el.addEventListener('click', () => { stop(); select(i); });
+      el.addEventListener('keydown', (e) => {
+        const keys = { ArrowRight: Math.min(i + 1, stops.length - 1), ArrowLeft: Math.max(i - 1, 0),
+                       Home: 0, End: stops.length - 1 };
+        if (!(e.key in keys)) return;
+        e.preventDefault();
+        stop();
+        stops[keys[e.key]].focus();
+        select(keys[e.key]);
+      });
+    });
+
+    play?.addEventListener('click', () => {
+      stop();
+      let i = 0;
+      select(0);
+      timer = setInterval(() => { i += 1; if (i > last) return stop(); select(i); }, 1100);
+    });
+  })();
+</script>

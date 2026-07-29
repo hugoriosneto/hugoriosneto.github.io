@@ -1,0 +1,45 @@
+---
+const { talk } = Astro.props;
+const tag = 'rounded-full border border-[var(--acc2)]/40 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--acc2)]';
+---
+<article data-testid="talk-card" class="overflow-hidden rounded-xl border border-[var(--cardline)] bg-[var(--card)]">
+  <!-- An <a> to the canonical watch page, not a <button>. With scripts off the earlier
+       version rendered posters that never loaded and left no link to any of the media
+       the page exists to surface — and the embedUrl is a player URL, so it was not
+       recoverable by hand either. The script calls preventDefault() and swaps in the
+       iframe; without it, the poster is simply a link that opens the talk. -->
+  <!-- The title is a visually-hidden span INSIDE the link, not an aria-label on it.
+       All five posters carry the same visible copy, so something has to tell them apart
+       for a screen-reader user listing links (WCAG 2.4.4). The obvious move —
+       aria-label="Watch <title> on vimeo" — buys 2.4.4 by breaking 2.5.3 Label in Name:
+       aria-label REPLACES the accessible name, so the words on screen ("play here, or
+       open on vimeo") appear nowhere in it, and a speech-input user who says what they
+       can read matches nothing. Composing the name from content instead gives
+       "<title> play here, or open on vimeo": unique per link AND containing the visible
+       string verbatim. The title leads so the disambiguator is heard first.
+       sr-only, matching the "(new)" flag in Trajectory.astro; it is position:absolute,
+       so it takes no part in this flex column's layout. -->
+  <a class="talk-frame flex aspect-video cursor-pointer flex-col items-center justify-center gap-2 bg-[var(--poster)] no-underline"
+     href={talk.url} data-embed={talk.embedUrl} target="_blank" rel="noopener">
+    <span class="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accfill)] text-white" aria-hidden="true">▶</span>
+    <span class="sr-only">{talk.title}</span>
+    <span class="text-xs text-[var(--dim)]">play here, or open on {talk.provider}</span>
+  </a>
+  <div class="p-4">
+    <!-- h2, not h3: talks.astro has no intervening section heading between the page's h1
+         and this grid of cards (unlike index.astro's h3 cards, which sit under an h2
+         SectionHead). An h3 here skips a level — axe's heading-order rule is tagged
+         best-practice only, not any wcag2*/wcag21* tag, so Task 19's axe gate (which
+         filters on those tags) cannot see it. Lighthouse's accessibility audit runs the
+         unfiltered axe rule set and caught it, costing the talks page 2 points (98/100)
+         while still clearing the ≥95 gate — a case of a gate passing over a real defect. -->
+    <h2 class="text-[0.9rem] font-semibold leading-snug">{talk.title}</h2>
+    <p class="mt-1 text-xs leading-relaxed text-[var(--faint)]">{talk.description}</p>
+    <div class="mt-2.5 flex flex-wrap gap-1.5">
+      {talk.award && <span class="rounded-full border border-[var(--award-line)] bg-[#FEDD00]/30 px-2 py-0.5 text-[0.62rem] font-bold uppercase tracking-wider text-[var(--award-fg)]">{talk.award}</span>}
+      <span class={tag}>{talk.language}</span>
+      <span class={tag}>{talk.format}</span>
+      {talk.credit && <span class={tag}>{talk.credit}</span>}
+    </div>
+  </div>
+</article>

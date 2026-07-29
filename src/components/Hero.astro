@@ -1,0 +1,136 @@
+---
+import { Image } from 'astro:assets';
+import portrait from '../assets/portrait.jpg';
+
+const legendLinks = {
+  salab: 'https://salabufmg.github.io/',
+  fame: 'https://salabufmg.github.io/FAME26/',
+  mlsa: 'https://dtai.cs.kuleuven.be/events/MLSA26/index.php',
+};
+const a = 'text-[var(--acc)] no-underline border-b border-[var(--acc)]/45 hover:border-[var(--acc)]';
+---
+<!-- Two columns from 56rem (896px) up, one below. NOT md: (768px). Base.astro's
+     container is max-w-4xl + px-6, so content only reaches its full 848px at an 896px
+     viewport; 896 is precisely where max-w-4xl stops growing and the text column locks
+     at its permanent 460px. Splitting at 768 instead handed the text 332–398px while
+     the portrait kept a fixed 340px, which is the whole tablet band — iPad 9th (768),
+     10th (810), Air (820), Pro 11" (834) all portrait. Measured across 767 -> 768, a ONE
+     PIXEL change of viewport: the text column fell 719px -> 332px, the lead's measure
+     fell 576.5px -> 332px, the h1 gained two one-word orphan lines ("department." and
+     "conference." each alone), and the hero collapsed 1059.1px -> 840.7px. max-w-[23ch]
+     on the h1 (457.4px) and max-w-[56ch] on the lead (576.6px) were both inert from 768
+     to 895, because the column was narrower than either cap.
+     On a phone the grid collapses and the figure lands after the identity block: the
+     h1 is the strongest claim on the site and has to be the first thing on a small
+     screen, ahead of the portrait. -->
+<section data-testid="hero" class="grid gap-10 py-16 min-[56rem]:grid-cols-[minmax(0,1fr)_auto] min-[56rem]:items-start min-[56rem]:gap-12">
+  <div>
+    <!-- text-balance on each sentence. Both halves of this are measured, in Chromium and
+         WebKit, on the built page with the fonts loaded — an earlier version of this
+         comment claimed the balanced wrap held "at every width" and that was false at 768
+         and 810 for as long as the hero split at md:.
+
+         Without text-balance (measured by deleting it and rebuilding): at 414, 768, 820,
+         896, 1280 and 1440 all three sentences land a single word on their second line —
+         "department.", "lab.", "conference." — one of them the four-character "lab."
+
+         With it: at 375, 390, 414, 612, 613, 767, 768, 810, 820, 834, 895, 896, 1024,
+         1280 and 1440 every sentence occupies exactly two lines and carries at least two
+         words onto the second, S1 breaking "Brazil's first club / analytics department."
+         identically at all fifteen. That holds down to a 312px text column (viewport 360);
+         below it — measured at 320, 330, 340, 350 — the column is too narrow for the
+         balanced break and S1 goes to three lines ending on "department." No claim is
+         made here about widths under 360. -->
+    <h1 class="mb-6 max-w-[23ch] font-serif text-[clamp(1.9rem,5vw,2.35rem)] font-normal leading-[1.24] tracking-[-0.022em]">
+      <span class="block text-balance">Brazil's <span class="highlight">first</span> club analytics department.</span>
+      <span class="block text-balance">Its <span class="highlight">first</span> sports analytics lab.</span>
+      <span class="block text-balance">Its <span class="highlight">first</span> football analytics conference.</span>
+    </h1>
+
+    <!-- text-pretty, not text-balance: the last line was the single word "Anderlecht."
+         at 414, 896, 1024, 1280 and 1440 — every two-column width plus one phone — with
+         "RSC" stranded on the line above. text-balance would re-even all five lines of a
+         body paragraph; pretty targets exactly the short-last-line case. Measured in
+         Chromium and WebKit on the built page: it restores "RSC Anderlecht." at all five
+         widths and changes the line COUNT at none of 375, 390, 414, 613, 767, 768, 820,
+         895, 896, 1024, 1280, 1440 — so the hero's height is unchanged. The h1 above
+         already spends text-balance on the same class of blemish. -->
+    <p class="mb-8 max-w-[56ch] text-pretty text-[1.02rem] leading-[1.66] text-[var(--dim)]">
+      I've spent my career building the parts of a football operation that didn't exist yet —
+      <b class="font-semibold text-[var(--ink)]">a department, a research lab, a conference now in its fifth edition</b>
+      — and then running them. These days I lead data recruitment at RSC Anderlecht.
+    </p>
+
+    <div class="max-w-[56ch] border-t-2 border-[var(--ink)] pt-4">
+      <div class="mb-1 text-lg font-semibold tracking-tight">Hugo Rios-Neto</div>
+      <!-- Separators use --faint, not --hair2: the latter is 1.39:1 on cream, effectively
+           invisible, and these are the only marks dividing the three role clauses.
+           aria-label on each link because a screen-reader user listing links otherwise
+           hears three bare acronyms with no role and no expansion — the visible
+           "Co-founder," is not part of the accessible name.
+           Each aria-label OPENS with the link's exact visible text, then expands it.
+           That ordering is WCAG 2.5.3 Label in Name (A): a speech-input user says what
+           they can read on screen, so the visible string has to appear in the
+           accessible name. Do not reorder these to lead with the expansion.
+           Non-breaking hyphens in Co&#8209;founder and Co&#8209;organizer: both were
+           breaking after the hyphen, leaving a line ending "Co-". -->
+      <p data-testid="legend" class="text-sm leading-[1.7] text-[var(--dim)]">
+        Data Recruitment Lead, RSC Anderlecht
+        <span class="mx-2 text-[var(--faint)]" aria-hidden="true">·</span>
+        Co&#8209;founder, <a class={a} href={legendLinks.salab} target="_blank" rel="noopener"
+           aria-label="SALab — Sports Analytics Lab at UFMG">SALab</a>
+        &amp; <a class={a} href={legendLinks.fame} target="_blank" rel="noopener"
+           aria-label="FAME — Football Analytics: Modeling and Experience">FAME</a>
+        <span class="mx-2 text-[var(--faint)]" aria-hidden="true">·</span>
+        Co&#8209;organizer, <a class={a} href={legendLinks.mlsa} target="_blank" rel="noopener"
+           aria-label="MLSA @ ECML/PKDD — Machine Learning and Data Mining for Sports Analytics">MLSA @ ECML/PKDD</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- eager + fetchpriority="high", never loading="lazy": on desktop this sits above
+       the fold and is the LCP element, so a lazy load would defer the very paint
+       Lighthouse measures.
+       widths + sizes rather than densities: densities emits 1x/2x descriptors, which
+       force every viewport to reason from the desktop candidate.
+       The astro:assets import carries the intrinsic 1260x1575, so width/height ship in
+       the markup and the box is reserved before the bytes arrive — no layout shift.
+
+       Below 56rem the portrait is w-full capped at max-w-[56ch], which is the cap the
+       IDENTITY BLOCK carries — both inherit 16px, so both resolve to 565.25px and the
+       photo's left and right edges land on exactly the same two verticals as the rule
+       above it at every width below the breakpoint (measured 0.00px / 0.00px at 375,
+       414, 613, 767, 768, 820 and 895). It was previously pinned to 280px while that
+       rule ran to 327px (at 375), 366px (at 414) and 565px (at 767), so its right edge
+       aligned to nothing and it read as a thumbnail that had failed to load.
+       The LEAD is deliberately not part of that alignment, and an earlier version of
+       this comment was wrong to claim it was: `ch` resolves against the element's own
+       font-size, and the lead is text-[1.02rem] (16.32px), so its 56ch measures 576.55px
+       — 11.3px wider than the rule and the photo. It does not show today, because the
+       longest lead line at 767 still ends 13.25px inside the rule's right edge, but the
+       margin is only 13px: a copy edit that lengthens a lead line can push it past the
+       photo's edge, and nothing here will stop it.
+
+       The sizes list tracks those CSS boundaries exactly, or the tablet band downloads
+       the wrong candidate: 340px from 896 up; 565px from 613 (where the 56ch cap starts
+       binding — 565.3 + 48px of px-6 gutters) to 895; viewport minus the gutters below
+       that. 1130 = 565 at 2x, 680 = 340 at 2x. There is DELIBERATELY no candidate above
+       1130: a DPR3 phone then takes the largest available rather than pulling a 3x
+       asset. That is the standard 2x-ceiling trade and it is what keeps the bytes sane —
+       do not "complete" the list with a 1695.
+
+       The border is load-bearing, not decoration: the subject wears cream against a
+       cream wall and the page background is cream, so without a defined edge the
+       photograph has no boundary. It uses --frame (2.62:1 on --bg), not --cardline,
+       which measures 1.18:1 — a border that asserted an edge without drawing one, and
+       left the photo's pale top corners visibly dissolving into the page. -->
+  <figure class="m-0">
+    <Image src={portrait}
+           alt="Hugo Rios-Neto at RSC Anderlecht's honours wall."
+           widths={[280, 340, 400, 565, 680, 800, 1130]}
+           sizes="(min-width: 896px) 340px, (min-width: 613px) 565px, calc(100vw - 3rem)"
+           loading="eager"
+           fetchpriority="high"
+           class="w-full max-w-[56ch] rounded-xl border border-[var(--frame)] min-[56rem]:w-[340px]" />
+  </figure>
+</section>

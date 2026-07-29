@@ -1,0 +1,57 @@
+- id: fame22
+  edition: 1
+  year: 2022
+  date: 21 October 2022
+  venue: CAD3, Auditorium B101/102 — UFMG Pampulha
+  status: past
+  detail: >-
+    The first football analytics event ever held in Brazil. Ran 09:00–14:00, with a
+    nominal R$5 entry through Sympla.
+  sponsors: []
+
+- id: fame23
+  edition: 2
+  year: 2023
+  date: 17 November 2023
+  venue: CAD3, Auditorium B101/102 — UFMG Pampulha
+  status: past
+  detail: >-
+    A full day, 09:00–18:30 — lectures, panels, presentations of submitted work, and a
+    published compendium of every contribution. The symbolic R$5 fee was donated to CAMAV.
+  sponsors:
+    - Gemini Sports Analytics
+
+- id: fame24
+  edition: 3
+  year: 2024
+  date: 5 September 2024
+  venue: CAD3 — UFMG Pampulha
+  status: past
+  detail: >-
+    Ran as the Future of Football Conference — FAME '24: Business of Global Football, in
+    collaboration with NYU. 08:30–18:30, with a pre-event workshop on 3 September.
+  sponsors:
+    - Gemini Sports Analytics
+    - OneFan
+
+- id: fame25
+  edition: 4
+  year: 2025
+  date: 3 September 2025
+  venue: CAD3 — UFMG Pampulha
+  status: past
+  detail: >-
+    08:30–18:30, preceded by a free hands-on preparatory workshop on 2 September covering
+    data science applied to sport.
+  sponsors:
+    - Gemini Sports Analytics
+    - Gradient Sports
+
+- id: fame26
+  edition: 5
+  year: 2026
+  date: 28 September 2026
+  venue: CAD3 — UFMG Pampulha
+  status: upcoming
+  note: Programme to be announced.
+  sponsors: []
